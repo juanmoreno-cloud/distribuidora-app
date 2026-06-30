@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Inputs con 16px para que iOS no haga zoom automatico al enfocar */
+@layer base {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  body {
+    @apply bg-gray-100 text-gray-900;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Boton tactil base: minimo 48px de alto para uso en campo */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 min-h-[48px] px-4 rounded-xl font-semibold transition active:scale-[0.98];
+  }
+  .btn-primary {
+    @apply btn bg-marca text-white;
+  }
+  .btn-success {
+    @apply btn bg-green-600 text-white;
+  }
+  .btn-ghost {
+    @apply btn bg-white text-gray-700 border border-gray-300;
+  }
+  .input {
+    @apply w-full min-h-[48px] px-3 rounded-xl border border-gray-300 bg-white outline-none focus:border-marca focus:ring-2 focus:ring-marca/30;
+  }
+  .label {
+    @apply block text-sm font-medium text-gray-600 mb-1;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-sm border border-gray-200;
+  }
+}
