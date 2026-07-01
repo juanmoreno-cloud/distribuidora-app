@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plug, Loader2, Download } from 'lucide-react';
+import { ArrowLeft, Plug, Loader2, Download, UserCog, ChevronRight } from 'lucide-react';
 import { db } from '../db/database';
 import { leerConfigSync, guardarConfigSync, probarConexion, syncCatalogo, syncDesdeSheets } from '../services/googleSheets';
 import { fechaLegible } from '../utils/formatters';
@@ -8,6 +9,7 @@ import { toast } from '../components/Toast';
 
 // Pantalla de Configuración de la sincronización con Google Sheets.
 export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
+  const navigate = useNavigate();
   const [url, setUrl] = useState('');
   const [token, setToken] = useState('');
   const [probando, setProbando] = useState(false);
@@ -58,6 +60,21 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
       </header>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Gestión de Usuarios (solo admin) */}
+        <button
+          className="card p-4 w-full flex items-center gap-3 active:scale-[0.99] transition"
+          onClick={() => { onCerrar(); navigate('/usuarios'); }}
+        >
+          <div className="bg-red-500 text-white rounded-xl w-10 h-10 flex items-center justify-center">
+            <UserCog size={20} />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-semibold">Gestión de Usuarios</p>
+            <p className="text-xs text-gray-500">Crear, editar y activar/desactivar usuarios</p>
+          </div>
+          <ChevronRight size={18} className="text-gray-400" />
+        </button>
+
         <div className="card p-4 text-sm text-gray-600 space-y-1">
           <p className="font-semibold text-gray-800">Conexión con Google Sheets</p>
           <p>Pega aquí la URL del <b>Web App de Apps Script</b> (ver instrucciones en el README). No se guardan claves secretas en el teléfono.</p>

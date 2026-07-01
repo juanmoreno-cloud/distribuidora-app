@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { MapPin, Camera, Save, X, Loader2 } from 'lucide-react';
 import {
-  TIPOS_CLIENTE, ZONAS, ESTADOS_CLIENTE, TIPOS_PAGO, VENDEDORES, RUTAS,
-  type Cliente, type TipoCliente, type Zona, type EstadoCliente, type TipoPago, type Vendedor, type Ruta,
+  TIPOS_CLIENTE, ZONAS, ESTADOS_CLIENTE, TIPOS_PAGO, RUTAS,
+  type Cliente, type TipoCliente, type Zona, type EstadoCliente, type TipoPago, type Ruta,
 } from '../types';
 import { db } from '../db/database';
 import { obtenerUbicacion } from '../services/geolocation';
@@ -27,7 +27,7 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
     limite_credito: 0,
     contacto_nombre: '',
     observaciones: '',
-    vendedor_asignado: (sesion?.vendedor ?? '') as Vendedor | '',
+    vendedor_asignado: sesion?.vendedor ?? '', // autocompletado con el usuario logueado
     ruta: (sesion?.ruta ?? '') as Ruta | '',
   });
   const [lat, setLat] = useState<number | undefined>();
@@ -192,10 +192,7 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Vendedor asignado</label>
-            <select className="input" value={f.vendedor_asignado} onChange={(e) => set('vendedor_asignado', e.target.value as Vendedor)}>
-              <option value="">Selecciona…</option>
-              {VENDEDORES.map((v) => <option key={v} value={v}>{v}</option>)}
-            </select>
+            <input className="input bg-gray-100 text-gray-600" value={f.vendedor_asignado || '—'} readOnly />
           </div>
           <div>
             <label className="label">Ruta</label>

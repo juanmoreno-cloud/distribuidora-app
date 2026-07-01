@@ -8,8 +8,9 @@ hay conexión.
 ## Tecnología
 
 React 18 + Vite + TypeScript · Tailwind CSS · Dexie.js (IndexedDB) · vite-plugin-pwa ·
-jsPDF · lucide-react. Sincronización mediante un **Google Apps Script Web App** (sin servidor
-propio y sin exponer claves secretas en el teléfono).
+jsPDF · lucide-react · bcryptjs (contraseñas cifradas). Sincronización mediante un
+**Google Apps Script Web App** (sin servidor propio y sin exponer claves secretas en el
+teléfono).
 
 ## Instalación y uso (desarrollo)
 
@@ -20,8 +21,30 @@ npm install     # instala todo
 npm run dev     # abre la app en http://localhost:5173
 ```
 
-Para entrar: elige un vendedor y una ruta, y toca **INICIAR JORNADA**. La app ya trae
-8 clientes y 40 productos de ejemplo cargados.
+Para entrar: **usuario y contraseña** (ver "Login y roles"). La app ya trae 8 clientes,
+40 productos y 22 usuarios de ejemplo cargados.
+
+## Login y roles
+
+La app usa autenticación local (contra IndexedDB, funciona sin internet). Las contraseñas
+se guardan **cifradas** con bcrypt. Hay 22 usuarios precargados con **4 roles**:
+
+| Rol | Qué ve | Pantalla inicial |
+|-----|--------|------------------|
+| **admin** | Todo + Configuración y Gestión de Usuarios | Inicio (4 módulos) |
+| **vendedor** | Clientes y Pedidos | Inicio (2 módulos) |
+| **despachador** | Despacho (marcar entregas, PDF) | Despacho |
+| **almacenista** | Carga del Camión (solo lectura, PDF) | Carga |
+
+- **Entrada de administrador:** usuarios `admin1` y `admin2` (sus contraseñas se entregaron
+  al dueño por separado, no se guardan en el código).
+- Los usuarios **no-admin** deben **cambiar su contraseña temporal en el primer login**.
+- **Seguridad:** 3 intentos fallidos → cuenta bloqueada 15 min; la sesión persiste al reabrir
+  la app y expira tras 8 h de inactividad.
+- **Gestión de usuarios** (solo admin): Inicio → engranaje → Gestión de Usuarios. Permite
+  crear, editar y activar/desactivar usuarios (no se puede desactivar al último admin).
+- Las contraseñas semilla se generan cifradas con `node scripts/gen-hashes.mjs`
+  (que reescribe `src/db/seedUsuarios.ts`). El texto plano de las claves **no** vive en el código.
 
 ## Build para producción
 

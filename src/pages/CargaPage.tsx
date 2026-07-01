@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { FileText, Package } from 'lucide-react';
+import { FileText, Package, Lock } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import { db } from '../db/database';
 import { RUTAS, type CargaItem, type Pedido, type Producto } from '../types';
 import { mananaISO } from '../utils/formatters';
 import { generarPdfCarga } from '../utils/pdfGenerator';
 import { leerSesion } from '../hooks/useSession';
+import { useAuth } from '../auth/AuthContext';
 import { toast } from '../components/Toast';
 
 // Orden sugerido de carga: lo que va al fondo del camión primero.
@@ -19,8 +20,10 @@ function ordenGrupo(g: string): number {
 
 export default function CargaPage() {
   const sesion = leerSesion();
+  const { usuario } = useAuth();
+  const soloLectura = usuario?.rol === 'almacenista';
   const [fecha, setFecha] = useState(mananaISO());
-  const [ruta, setRuta] = useState<string>(sesion?.ruta ?? RUTAS[0]);
+  const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
 
   const pedidos = useLiveQuery(() => db.pedidos.toArray(), []) ?? [];
   const productos = useLiveQuery(() => db.productos.toArray(), []) ?? [];
@@ -65,6 +68,12 @@ export default function CargaPage() {
       <PageHeader titulo="Carga del Camión" />
 
       <div className="p-4 space-y-4 pb-24">
+        {soloLectura && (
+          <div className="card p-3 bg-blue-50 border-blue-200 flex items-center gap-2 text-blue-800 text-sm">
+            <Lock size={18} /> Solo lectura. Contacta al admin para modificaciones.
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Fecha de entrega</label>

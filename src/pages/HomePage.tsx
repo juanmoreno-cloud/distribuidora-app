@@ -1,44 +1,49 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, ShoppingCart, Truck, Package, LogOut, Settings } from 'lucide-react';
-import { useSession, cerrarSesion } from '../hooks/useSession';
+import { useAuth } from '../auth/AuthContext';
+import { puedeAbrir } from '../auth/permisos';
+import { ETIQUETA_ROL } from '../types';
 import SyncBadge from '../components/SyncBadge';
 import ConfigPage from './ConfigPage';
 
-// Pantalla de inicio: saludo + accesos directos a los modulos.
+// Pantalla de inicio: saludo + accesos directos según el rol del usuario.
 export default function HomePage() {
-  const sesion = useSession();
+  const { usuario, logout } = useAuth();
   const [mostrarConfig, setMostrarConfig] = useState(false);
+  if (!usuario) return null;
 
   const accesos = [
     { to: '/clientes', label: 'Clientes', desc: 'Registrar y ver clientes', Icon: Users, color: 'bg-blue-500' },
     { to: '/pedidos', label: 'Pedidos', desc: 'Tomar un nuevo pedido', Icon: ShoppingCart, color: 'bg-green-500' },
     { to: '/carga', label: 'Carga del Camión', desc: 'Resumen para el almacén', Icon: Package, color: 'bg-amber-500' },
     { to: '/despacho', label: 'Despacho', desc: 'Guías de entrega', Icon: Truck, color: 'bg-purple-500' },
-  ];
+  ].filter((a) => puedeAbrir(usuario.rol, a.to));
 
   return (
     <div className="p-4">
       <header className="flex items-start justify-between mb-6">
         <div>
           <p className="text-sm text-gray-500">Hola,</p>
-          <h1 className="text-xl font-bold">{sesion?.vendedor}</h1>
-          <p className="text-sm text-marca font-medium">{sesion?.ruta}</p>
+          <h1 className="text-xl font-bold">{usuario.nombre_completo}</h1>
+          <p className="text-sm text-marca font-medium">
+            {ETIQUETA_ROL[usuario.rol]}{usuario.ruta_asignada ? ` · ${usuario.ruta_asignada}` : ''}
+          </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <SyncBadge />
           <div className="flex gap-2">
-            <button className="btn-ghost !min-h-[40px] !px-3 text-sm" onClick={() => setMostrarConfig(true)}>
-              <Settings size={18} />
-            </button>
-            <button className="btn-ghost !min-h-[40px] text-sm" onClick={cerrarSesion}>
+            {usuario.rol === 'admin' && (
+              <button className="btn-ghost !min-h-[40px] !px-3 text-sm" onClick={() => setMostrarConfig(true)}>
+                <Settings size={18} />
+              </button>
+            )}
+            <button className="btn-ghost !min-h-[40px] text-sm" onClick={logout}>
               <LogOut size={18} /> Salir
             </button>
           </div>
         </div>
       </header>
-
-      {mostrarConfig && <ConfigPage onCerrar={() => setMostrarConfig(false)} />}
 
       <div className="grid grid-cols-2 gap-3">
         {accesos.map(({ to, label, desc, Icon, color }) => (
@@ -53,6 +58,8 @@ export default function HomePage() {
           </Link>
         ))}
       </div>
+
+      {mostrarConfig && usuario.rol === 'admin' && <ConfigPage onCerrar={() => setMostrarConfig(false)} />}
     </div>
   );
 }

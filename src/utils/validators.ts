@@ -17,3 +17,19 @@ export function esTelefonoValido(tel: string): boolean {
 export function esEmailValido(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || '');
 }
+
+// Contraseña fuerte: mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.
+export function esClaveFuerte(clave: string): boolean {
+  return (
+    clave.length >= 8 &&
+    /[A-Z]/.test(clave) &&
+    /[a-z]/.test(clave) &&
+    /[0-9]/.test(clave) &&
+    /[^A-Za-z0-9]/.test(clave)
+  );
+}
+
+// Username válido: 4+ caracteres, solo letras, números, puntos y guiones bajos.
+export function esUsernameValido(username: string): boolean {
+  return /^[A-Za-z0-9._]{4,}$/.test(username || '');
+}

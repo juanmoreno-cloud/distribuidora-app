@@ -20,7 +20,7 @@ interface Parada {
 export default function DespachoPage() {
   const sesion = leerSesion();
   const [fecha, setFecha] = useState(mananaISO());
-  const [ruta, setRuta] = useState<string>(sesion?.ruta ?? RUTAS[0]);
+  const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
   const [porProximidad, setPorProximidad] = useState(false);
   const [expandido, setExpandido] = useState<string | null>(null);
 

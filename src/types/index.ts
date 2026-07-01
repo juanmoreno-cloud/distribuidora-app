@@ -86,7 +86,7 @@ export interface Cliente {
   latitud?: number;
   longitud?: number;
   contacto_nombre: string;
-  vendedor_asignado: Vendedor | '';
+  vendedor_asignado: string; // nombre del vendedor logueado (o dato heredado)
   ruta: Ruta | '';
   tipo_pago: TipoPago;
   limite_credito: number;
@@ -152,8 +152,41 @@ export interface ConfigItem {
   valor: unknown;
 }
 
-// -------------------- Sesion del vendedor (localStorage) --------------------
+// -------------------- Sesion derivada (para módulos existentes) --------------------
 export interface Sesion {
-  vendedor: Vendedor;
-  ruta: Ruta;
+  vendedor: string;   // nombre del usuario logueado
+  ruta: string;       // ruta asignada (vacío si el rol no tiene ruta)
+}
+
+// -------------------- Usuarios y roles --------------------
+export const ROLES = ['vendedor', 'despachador', 'almacenista', 'admin'] as const;
+export type Rol = (typeof ROLES)[number];
+
+export const ETIQUETA_ROL: Record<Rol, string> = {
+  vendedor: 'Vendedor',
+  despachador: 'Despachador',
+  almacenista: 'Almacenista',
+  admin: 'Administrador',
+};
+
+export interface Usuario {
+  id: string;
+  username: string;
+  password: string;          // hash bcrypt (nunca texto plano)
+  nombre_completo: string;
+  rol: Rol;
+  ruta_asignada?: string;    // solo vendedores
+  activo: boolean;
+  fecha_creacion: string;
+  creado_por: string;
+  debe_cambiar_clave: boolean;
+}
+
+// Sesión guardada en localStorage tras iniciar sesión.
+export interface SesionAuth {
+  usuario: string;   // username
+  rol: Rol;
+  nombre: string;    // nombre_completo
+  ruta_asignada?: string;
+  timestamp: number; // para expiración por inactividad
 }

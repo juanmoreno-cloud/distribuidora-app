@@ -84,7 +84,8 @@ export default function NuevoPedido() {
       fecha_pedido: new Date(fechaPedido + 'T12:00:00').toISOString(),
       fecha_entrega: new Date(fechaEntrega + 'T12:00:00').toISOString(),
       vendedor: sesion?.vendedor ?? '',
-      ruta: cliente.ruta || sesion?.ruta || '',
+      // La ruta se toma de la ruta asignada del vendedor; si no tiene, la del cliente.
+      ruta: sesion?.ruta || cliente.ruta || '',
       cliente_id: cliente.id,
       cliente_nombre: cliente.nombre_fantasia || cliente.razon_social,
       tipo_pago: cliente.tipo_pago,
@@ -138,6 +139,15 @@ export default function NuevoPedido() {
 
   return (
     <div className="p-4 space-y-4 pb-40">
+      {/* Vendedor y ruta fijos según el usuario logueado */}
+      <div className="card p-3 text-sm flex items-center justify-between">
+        <span className="text-gray-500">Vendedor</span>
+        <span className="font-medium text-right">
+          {sesion?.vendedor}
+          {sesion?.ruta ? <span className="block text-xs text-marca">{sesion.ruta}</span> : null}
+        </span>
+      </div>
+
       {/* Paso 1: Cliente */}
       <section className="space-y-2">
         <p className="text-sm font-semibold text-gray-700">1. Cliente</p>

@@ -1,37 +1,31 @@
 import { useEffect, useState } from 'react';
-import type { Sesion } from '../types';
+import type { Sesion, SesionAuth } from '../types';
 
-const CLAVE = 'distribuidora_sesion';
+// Compatibilidad para los módulos existentes (Pedidos, Clientes, Carga, Despacho):
+// deriva { vendedor, ruta } de la sesión de autenticación real.
+const CLAVE_AUTH = 'distribuidora_auth';
 
-// Lee la sesion (vendedor + ruta) guardada en localStorage.
+function leerAuth(): SesionAuth | null {
+  try { return JSON.parse(localStorage.getItem(CLAVE_AUTH) || '') as SesionAuth; }
+  catch { return null; }
+}
+
+// Devuelve { vendedor, ruta } del usuario logueado (o null si no hay sesión).
 export function leerSesion(): Sesion | null {
-  try {
-    const raw = localStorage.getItem(CLAVE);
-    return raw ? (JSON.parse(raw) as Sesion) : null;
-  } catch {
-    return null;
-  }
+  const a = leerAuth();
+  if (!a) return null;
+  return { vendedor: a.nombre, ruta: a.ruta_asignada ?? '' };
 }
 
-export function guardarSesion(s: Sesion): void {
-  localStorage.setItem(CLAVE, JSON.stringify(s));
-  window.dispatchEvent(new Event('sesion-cambiada'));
-}
-
-export function cerrarSesion(): void {
-  localStorage.removeItem(CLAVE);
-  window.dispatchEvent(new Event('sesion-cambiada'));
-}
-
-// Hook reactivo: la app se entera cuando inicia o cierra la jornada.
+// Hook reactivo equivalente, para componentes.
 export function useSession(): Sesion | null {
   const [sesion, setSesion] = useState<Sesion | null>(leerSesion);
   useEffect(() => {
     const handler = () => setSesion(leerSesion());
-    window.addEventListener('sesion-cambiada', handler);
+    window.addEventListener('auth-cambiada', handler);
     window.addEventListener('storage', handler);
     return () => {
-      window.removeEventListener('sesion-cambiada', handler);
+      window.removeEventListener('auth-cambiada', handler);
       window.removeEventListener('storage', handler);
     };
   }, []);
