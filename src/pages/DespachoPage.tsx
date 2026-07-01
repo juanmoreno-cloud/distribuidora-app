@@ -30,7 +30,7 @@ export default function DespachoPage() {
   const paradas = useMemo<Parada[]>(() => {
     const mapaCli = new Map<string, Cliente>(clientes.map((c) => [c.id, c]));
     let lista: Parada[] = (pedidos as Pedido[])
-      .filter((p) => p.fecha_entrega.slice(0, 10) === fecha && p.ruta === ruta && p.estado_pedido !== 'Cancelado')
+      .filter((p) => !p.eliminado && p.fecha_entrega.slice(0, 10) === fecha && p.ruta === ruta && p.estado_pedido !== 'Cancelado')
       .map((p) => {
         const cli = mapaCli.get(p.cliente_id);
         return { pedido: p, cliente: cli, latitud: cli?.latitud, longitud: cli?.longitud };

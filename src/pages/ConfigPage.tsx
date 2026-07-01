@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plug, Loader2, Download, UserCog, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plug, Loader2, Download, UserCog, ChevronRight, Trash2 } from 'lucide-react';
 import { db } from '../db/database';
 import { leerConfigSync, guardarConfigSync, probarConexion, syncCatalogo, syncDesdeSheets } from '../services/googleSheets';
 import { fechaLegible } from '../utils/formatters';
@@ -71,6 +71,21 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
           <div className="flex-1 text-left">
             <p className="font-semibold">Gestión de Usuarios</p>
             <p className="text-xs text-gray-500">Crear, editar y activar/desactivar usuarios</p>
+          </div>
+          <ChevronRight size={18} className="text-gray-400" />
+        </button>
+
+        {/* Papelera (solo admin) */}
+        <button
+          className="card p-4 w-full flex items-center gap-3 active:scale-[0.99] transition"
+          onClick={() => { onCerrar(); navigate('/papelera'); }}
+        >
+          <div className="bg-gray-500 text-white rounded-xl w-10 h-10 flex items-center justify-center">
+            <Trash2 size={20} />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="font-semibold">Papelera</p>
+            <p className="text-xs text-gray-500">Restaurar o eliminar definitivamente</p>
           </div>
           <ChevronRight size={18} className="text-gray-400" />
         </button>

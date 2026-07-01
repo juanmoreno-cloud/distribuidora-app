@@ -33,6 +33,7 @@ export default function CargaPage() {
     const mapaProd = new Map<number, Producto>(productos.map((p) => [p.codigo, p]));
     const acc = new Map<number, CargaItem>();
     for (const ped of pedidos as Pedido[]) {
+      if (ped.eliminado) continue;
       if (ped.fecha_entrega.slice(0, 10) !== fecha) continue;
       if (ped.ruta !== ruta) continue;
       if (ped.estado_pedido === 'Cancelado') continue;

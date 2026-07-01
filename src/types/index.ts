@@ -94,6 +94,7 @@ export interface Cliente {
   fecha_registro: string; // ISO
   sincronizado: boolean;
   fotos_soportes: string[]; // base64 (offline; luego se suben)
+  eliminado?: boolean; // borrado suave (solo admin); se oculta de las vistas
 }
 
 // -------------------- Producto --------------------
@@ -133,6 +134,7 @@ export interface Pedido {
   // Campos de despacho (se llenan en el modulo de Despacho)
   entregado?: boolean;
   obs_entrega?: string;
+  eliminado?: boolean; // borrado suave (solo admin); se oculta de las vistas
 }
 
 // -------------------- Carga del camion (derivada) --------------------

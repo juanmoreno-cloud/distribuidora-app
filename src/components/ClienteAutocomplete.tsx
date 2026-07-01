@@ -16,7 +16,7 @@ export default function ClienteAutocomplete({
 }) {
   const [q, setQ] = useState('');
   const [abierto, setAbierto] = useState(false);
-  const clientes = useLiveQuery(() => db.clientes.toArray(), []) ?? [];
+  const clientes = (useLiveQuery(() => db.clientes.toArray(), []) ?? []).filter((c) => !c.eliminado);
 
   const texto = q.trim().toLowerCase();
   const resultados = texto

@@ -89,6 +89,7 @@ export async function syncDesdeSheets(): Promise<number> {
   for (const r of rows) {
     const id = String(r.id ?? r.rif ?? '').trim();
     if (!id) continue;
+    if (String(r.estado).toUpperCase() === 'ELIMINADO') continue; // no re-importar borrados
     const existe = await db.clientes.get(id);
     if (!existe) {
       await db.clientes.put(filaACliente(r, id));
@@ -110,7 +111,8 @@ function clienteAFila(c: Cliente) {
   return {
     id: c.id, razon_social: c.razon_social, nombre_fantasia: c.nombre_fantasia, rif: c.rif,
     telefono: c.telefono, direccion: c.direccion, tipo_cliente: c.tipo_cliente, zona: c.zona,
-    estado: c.estado, latitud: c.latitud ?? '', longitud: c.longitud ?? '',
+    // Si el admin lo eliminó, se marca ELIMINADO en Sheets (conserva historial).
+    estado: c.eliminado ? 'ELIMINADO' : c.estado, latitud: c.latitud ?? '', longitud: c.longitud ?? '',
     contacto_nombre: c.contacto_nombre, vendedor_asignado: c.vendedor_asignado, ruta: c.ruta,
     tipo_pago: c.tipo_pago, limite_credito: c.limite_credito, observaciones: c.observaciones,
     fecha_registro: c.fecha_registro,
@@ -141,7 +143,7 @@ function pedidoAFila(p: Pedido) {
   return {
     id: p.id, fecha_pedido: p.fecha_pedido, fecha_entrega: p.fecha_entrega, vendedor: p.vendedor,
     ruta: p.ruta, cliente_id: p.cliente_id, cliente_nombre: p.cliente_nombre, tipo_pago: p.tipo_pago,
-    estado_pedido: p.estado_pedido, total_pedido: p.total_pedido, notas: p.notas,
+    estado_pedido: p.eliminado ? 'eliminado' : p.estado_pedido, total_pedido: p.total_pedido, notas: p.notas,
     entregado: p.entregado ? 'SÍ' : '', obs_entrega: p.obs_entrega ?? '',
     lineas_json: JSON.stringify(p.lineas),
   };

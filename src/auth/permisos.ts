@@ -28,7 +28,7 @@ export const PERMISOS: Record<Rol, PermisoRol> = {
   },
   admin: {
     rutaInicial: '/',
-    rutasPermitidas: ['/', '/clientes', '/pedidos', '/carga', '/despacho', '/usuarios'],
+    rutasPermitidas: ['/', '/clientes', '/pedidos', '/carga', '/despacho', '/usuarios', '/papelera'],
     tabs: ['inicio', 'clientes', 'pedidos', 'despacho'],
   },
 };

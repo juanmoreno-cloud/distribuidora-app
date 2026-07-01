@@ -1,17 +1,26 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Search, MapPin, CloudOff } from 'lucide-react';
+import { Plus, Search, MapPin, CloudOff, Trash2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ClienteForm from '../components/ClienteForm';
+import ConfirmModal from '../components/ConfirmModal';
 import { db } from '../db/database';
 import type { Cliente } from '../types';
+import { useAuth } from '../auth/AuthContext';
+import { toast } from '../components/Toast';
+import { contarPedidosDeCliente, eliminarCliente, eliminarClienteConPedidos } from '../services/borrado';
 
 // Módulo de Clientes: lista + búsqueda + registro de nuevos (offline).
 export default function ClientesPage() {
+  const { usuario } = useAuth();
+  const esAdmin = usuario?.rol === 'admin';
   const [mostrarForm, setMostrarForm] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [aEliminar, setAEliminar] = useState<Cliente | null>(null);
+  const [pedidosAsociados, setPedidosAsociados] = useState(0);
 
-  const clientes = useLiveQuery(() => db.clientes.toArray(), []) ?? [];
+  // Solo clientes NO eliminados.
+  const clientes = (useLiveQuery(() => db.clientes.toArray(), []) ?? []).filter((c) => !c.eliminado);
   const pendientes = clientes.filter((c) => !c.sincronizado);
 
   const q = busqueda.trim().toLowerCase();
@@ -21,6 +30,17 @@ export default function ClientesPage() {
         c.razon_social.toLowerCase().includes(q) ||
         c.rif.toLowerCase().includes(q))
     : clientes;
+
+  async function pedirEliminar(c: Cliente) {
+    setPedidosAsociados(await contarPedidosDeCliente(c.id));
+    setAEliminar(c);
+  }
+
+  async function hacer(fn: () => Promise<void>, msg: string) {
+    try { await fn(); toast(msg, 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+    finally { setAEliminar(null); }
+  }
 
   return (
     <div>
@@ -34,18 +54,11 @@ export default function ClientesPage() {
       />
 
       <div className="p-4 space-y-4">
-        {/* Buscador */}
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            className="input pl-10"
-            placeholder="Buscar por nombre o RIF…"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <input className="input pl-10" placeholder="Buscar por nombre o RIF…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
 
-        {/* Aviso de pendientes de sincronizar */}
         {pendientes.length > 0 && (
           <div className="card p-3 bg-amber-50 border-amber-200 flex items-center gap-2 text-amber-800 text-sm">
             <CloudOff size={18} />
@@ -57,20 +70,40 @@ export default function ClientesPage() {
 
         <div className="space-y-2">
           {filtrados.map((c) => (
-            <ClienteCard key={c.id} cliente={c} />
+            <ClienteCard key={c.id} cliente={c} esAdmin={esAdmin} onEliminar={() => pedirEliminar(c)} />
           ))}
-          {filtrados.length === 0 && (
-            <p className="text-center text-gray-400 py-8">No hay clientes que coincidan.</p>
-          )}
+          {filtrados.length === 0 && <p className="text-center text-gray-400 py-8">No hay clientes que coincidan.</p>}
         </div>
       </div>
 
       {mostrarForm && <ClienteForm onCerrar={() => setMostrarForm(false)} />}
+
+      {aEliminar && (
+        <ConfirmModal
+          titulo="Eliminar cliente"
+          mensaje={
+            pedidosAsociados > 0
+              ? <>Este cliente tiene <b>{pedidosAsociados}</b> pedido(s) asociado(s). ¿Eliminar solo el cliente o también sus pedidos?<br /><span className="text-xs text-gray-400">Esta acción no se puede deshacer.</span></>
+              : <>¿Estás seguro de eliminar a <b>{aEliminar.nombre_fantasia || aEliminar.razon_social}</b>? Esta acción no se puede deshacer.</>
+          }
+          acciones={
+            pedidosAsociados > 0
+              ? [
+                  { texto: 'Cliente y pedidos', tono: 'peligro', onClick: () => hacer(() => eliminarClienteConPedidos(aEliminar, usuario), 'Cliente y pedidos eliminados') },
+                  { texto: 'Solo cliente', tono: 'neutro', onClick: () => hacer(() => eliminarCliente(aEliminar, usuario), 'Cliente eliminado') },
+                ]
+              : [
+                  { texto: 'Eliminar definitivamente', tono: 'peligro', onClick: () => hacer(() => eliminarCliente(aEliminar, usuario), 'Cliente eliminado') },
+                ]
+          }
+          onCancelar={() => setAEliminar(null)}
+        />
+      )}
     </div>
   );
 }
 
-function ClienteCard({ cliente: c }: { cliente: Cliente }) {
+function ClienteCard({ cliente: c, esAdmin, onEliminar }: { cliente: Cliente; esAdmin: boolean; onEliminar: () => void }) {
   return (
     <div className="card p-3">
       <div className="flex items-start justify-between gap-2">
@@ -84,9 +117,17 @@ function ClienteCard({ cliente: c }: { cliente: Cliente }) {
           <span className="text-[10px] text-gray-400">{c.tipo_pago}</span>
         </div>
       </div>
-      <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
-        {c.latitud && <span className="flex items-center gap-1"><MapPin size={12} /> GPS</span>}
-        <span>{c.sincronizado ? '🟢 Sincronizado' : '🟡 Pendiente'}</span>
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-3 text-[11px] text-gray-400">
+          {c.latitud && <span className="flex items-center gap-1"><MapPin size={12} /> GPS</span>}
+          <span>{c.sincronizado ? '🟢 Sincronizado' : '🟡 Pendiente'}</span>
+        </div>
+        {/* Eliminar: SOLO admin */}
+        {esAdmin && (
+          <button className="text-red-500 flex items-center gap-1 text-xs font-medium p-1" onClick={onEliminar}>
+            <Trash2 size={15} /> Eliminar
+          </button>
+        )}
       </div>
     </div>
   );
