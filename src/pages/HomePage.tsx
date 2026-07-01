@@ -1,16 +1,13 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, ShoppingCart, Truck, Package, LogOut, Settings } from 'lucide-react';
+import { Users, ShoppingCart, Truck, Package } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { puedeAbrir } from '../auth/permisos';
 import { ETIQUETA_ROL } from '../types';
-import SyncBadge from '../components/SyncBadge';
-import ConfigPage from './ConfigPage';
+import HeaderAcciones from '../components/HeaderAcciones';
 
 // Pantalla de inicio: saludo + accesos directos según el rol del usuario.
 export default function HomePage() {
-  const { usuario, logout } = useAuth();
-  const [mostrarConfig, setMostrarConfig] = useState(false);
+  const { usuario } = useAuth();
   if (!usuario) return null;
 
   const accesos = [
@@ -30,19 +27,7 @@ export default function HomePage() {
             {ETIQUETA_ROL[usuario.rol]}{usuario.ruta_asignada ? ` · ${usuario.ruta_asignada}` : ''}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <SyncBadge />
-          <div className="flex gap-2">
-            {usuario.rol === 'admin' && (
-              <button className="btn-ghost !min-h-[40px] !px-3 text-sm" onClick={() => setMostrarConfig(true)}>
-                <Settings size={18} />
-              </button>
-            )}
-            <button className="btn-ghost !min-h-[40px] text-sm" onClick={logout}>
-              <LogOut size={18} /> Salir
-            </button>
-          </div>
-        </div>
+        <HeaderAcciones />
       </header>
 
       <div className="grid grid-cols-2 gap-3">
@@ -58,8 +43,6 @@ export default function HomePage() {
           </Link>
         ))}
       </div>
-
-      {mostrarConfig && usuario.rol === 'admin' && <ConfigPage onCerrar={() => setMostrarConfig(false)} />}
     </div>
   );
 }

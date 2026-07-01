@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { FileText, Package, Lock } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
 import { RUTAS, type CargaItem, type Pedido, type Producto } from '../types';
 import { mananaISO } from '../utils/formatters';
@@ -66,7 +67,7 @@ export default function CargaPage() {
 
   return (
     <div>
-      <PageHeader titulo="Carga del Camión" />
+      <PageHeader titulo="Carga del Camión" accion={<HeaderAcciones />} />
 
       <div className="p-4 space-y-4 pb-24">
         {soloLectura && (

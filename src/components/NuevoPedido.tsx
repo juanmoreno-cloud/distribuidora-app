@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Cliente, LineaPedido, Pedido, Producto } from '../types';
 import { db } from '../db/database';
 import { formatoMoneda, hoyISO, mananaISO } from '../utils/formatters';
+import { uuid } from '../utils/uuid';
 import { textoPedidoWhatsApp, compartirWhatsApp } from '../utils/whatsapp';
 import { leerSesion } from '../hooks/useSession';
 import { toast } from './Toast';
@@ -79,7 +80,7 @@ export default function NuevoPedido() {
     if (lineas.length === 0) { toast('Agrega al menos un producto.', 'error'); return; }
 
     const pedido: Pedido = {
-      id: crypto.randomUUID(),
+      id: uuid(),
       // Se ancla al mediodía local para que el día no se corra por zona horaria.
       fecha_pedido: new Date(fechaPedido + 'T12:00:00').toISOString(),
       fecha_entrega: new Date(fechaEntrega + 'T12:00:00').toISOString(),

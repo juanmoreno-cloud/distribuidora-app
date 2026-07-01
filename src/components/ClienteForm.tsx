@@ -8,6 +8,7 @@ import { db } from '../db/database';
 import { obtenerUbicacion } from '../services/geolocation';
 import { archivoABase64 } from '../utils/imagenes';
 import { esRifValido, esTelefonoValido } from '../utils/validators';
+import { uuid } from '../utils/uuid';
 import { toast } from './Toast';
 import { leerSesion } from '../hooks/useSession';
 
@@ -83,8 +84,8 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
     setGuardando(true);
     try {
       // id: usa el RIF si es válido y único; si no, genera uno.
-      let id = rif !== 'SIN RIF' ? rif : `cli-${crypto.randomUUID()}`;
-      if (await db.clientes.get(id)) id = `cli-${crypto.randomUUID()}`;
+      let id = rif !== 'SIN RIF' ? rif : `cli-${uuid()}`;
+      if (await db.clientes.get(id)) id = `cli-${uuid()}`;
 
       const cliente: Cliente = {
         id,
@@ -218,7 +219,24 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
             <input type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={(e) => agregarFotos(e.target.files)} />
           </label>
         </div>
-        {lat && <p className="text-xs text-gray-500">📍 {lat.toFixed(6)}, {lng?.toFixed(6)}</p>}
+        {/* Coordenadas: el botón GPS las llena solo; también se pueden escribir a mano. */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Latitud</label>
+            <input type="number" step="any" inputMode="decimal" className="input"
+              value={lat ?? ''} placeholder="Ej: 10.5208"
+              onChange={(e) => setLat(e.target.value === '' ? undefined : Number(e.target.value))} />
+          </div>
+          <div>
+            <label className="label">Longitud</label>
+            <input type="number" step="any" inputMode="decimal" className="input"
+              value={lng ?? ''} placeholder="Ej: -66.9418"
+              onChange={(e) => setLng(e.target.value === '' ? undefined : Number(e.target.value))} />
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-400">
+          El botón “Ubicación GPS” las llena automáticamente (requiere https). Si abres la app por WiFi (http), escríbelas a mano.
+        </p>
         {fotos.length > 0 && (
           <div className="flex gap-2 flex-wrap">
             {fotos.map((src, i) => (

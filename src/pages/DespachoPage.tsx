@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronDown, ChevronUp, FileText, Navigation, MapPin, Phone, CheckCircle2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
 import { RUTAS, type Cliente, type Pedido } from '../types';
 import { mananaISO, formatoMoneda } from '../utils/formatters';
@@ -63,7 +64,7 @@ export default function DespachoPage() {
 
   return (
     <div>
-      <PageHeader titulo="Despacho" />
+      <PageHeader titulo="Despacho" accion={<HeaderAcciones />} />
 
       <div className="p-4 space-y-4 pb-24">
         <div className="grid grid-cols-2 gap-3">
