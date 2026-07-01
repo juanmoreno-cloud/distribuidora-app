@@ -31,8 +31,12 @@ export function useSync() {
       const r = await sincronizarTodo();
       await db.configuracion.put({ clave: 'ultima_sync', valor: new Date().toISOString() });
       if (!silencioso) {
-        const total = r.clientes + r.pedidos;
-        toast(total > 0 ? `Sincronizado: ${total} registro(s).` : 'Todo está al día ✓', 'success');
+        const subidos = r.subeClientes + r.subePedidos;
+        const bajados = r.bajaCatalogo + r.bajaClientes;
+        const partes: string[] = [];
+        if (subidos > 0) partes.push(`${subidos} subido(s)`);
+        if (bajados > 0) partes.push(`${bajados} actualizado(s) desde Sheets`);
+        toast(partes.length ? `Sincronizado: ${partes.join(' · ')}.` : 'Todo está al día ✓', 'success');
       }
     } catch (e) {
       if (!silencioso) toast('No se pudo sincronizar: ' + (e as Error).message, 'error');

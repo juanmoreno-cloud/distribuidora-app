@@ -99,11 +99,23 @@ export async function syncDesdeSheets(): Promise<number> {
   return nuevos;
 }
 
-// Sincronización completa (la que dispara el botón y el auto-sync).
-export async function sincronizarTodo(): Promise<{ clientes: number; pedidos: number }> {
-  const clientes = await syncClientes();
-  const pedidos = await syncPedidos();
-  return { clientes, pedidos };
+export interface ResultadoSync {
+  subeClientes: number;   // clientes subidos
+  subePedidos: number;    // pedidos subidos
+  bajaCatalogo: number;   // productos/precios actualizados desde Sheets
+  bajaClientes: number;   // clientes nuevos traídos desde Sheets
+}
+
+// Sincronización BIDIRECCIONAL (la que dispara el botón y el auto-sync):
+//  1) SUBE clientes y pedidos pendientes (la app siempre gana: sobrescribe Sheets).
+//  2) BAJA catálogo/precios y clientes NUEVOS (no pisa los que ya existen en la app;
+//     no baja pedidos históricos).
+export async function sincronizarTodo(): Promise<ResultadoSync> {
+  const subeClientes = await syncClientes();
+  const subePedidos = await syncPedidos();
+  const bajaCatalogo = await syncCatalogo();
+  const bajaClientes = await syncDesdeSheets();
+  return { subeClientes, subePedidos, bajaCatalogo, bajaClientes };
 }
 
 // ---- Conversión a/desde fila de la hoja ----

@@ -1,19 +1,26 @@
 /**
  * Apps Script Web App para sincronizar la Distribuidora App con Google Sheets.
  *
- * CÓMO INSTALARLO (ver pasos detallados en el README.md de la app):
- *  1) Abre tu Google Sheet → menú Extensiones → Apps Script.
- *  2) Borra el contenido y pega TODO este archivo.
- *  3) (Opcional) Cambia TOKEN por una clave secreta tuya y ponla igual en la app.
- *  4) Implementar → Nueva implementación → tipo "Aplicación web".
+ * Este script es INDEPENDIENTE (standalone), por eso abre la hoja por su ID
+ * (no usa getActiveSpreadsheet). El ID ya viene puesto abajo (SHEET_ID).
+ *
+ * CÓMO DESPLEGARLO (pasos detallados también en el README.md):
+ *  1) Abre tu proyecto de Apps Script.
+ *  2) Borra todo el contenido y pega TODO este archivo. Guarda (Ctrl+S).
+ *  3) (Opcional) Cambia TOKEN por una clave secreta y pon la misma en la app.
+ *  4) Implementar → Nueva implementación → tipo "Aplicación web":
  *       - Ejecutar como: Yo
  *       - Quién tiene acceso: Cualquier persona
- *  5) Copia la URL del Web App y pégala en la pantalla Configuración de la app.
+ *     Autoriza los permisos que pida la primera vez.
+ *  5) Copia la URL del Web App (termina en /exec) y pégala en la app:
+ *     Inicio → engranaje (Configuración) → URL del Web App.
  *
- * La app envía un POST con JSON { action, token, payload }. No se exponen
- * claves secretas en el teléfono (solo la URL pública del Web App).
+ * Regla de negocio: la APP siempre gana. Al subir (push) se sobrescribe la
+ * fila en Sheets. Al bajar (pull) solo se traen catálogo/precios y clientes
+ * NUEVOS; los clientes que ya existen en la app NO se pisan desde Sheets.
  */
 
+var SHEET_ID = '1GwYPKp0KaKZaLplHEV2U-wK6p2BSNHt4v2mBkDbDuIw';
 var TOKEN = ''; // si lo dejas vacío, no se exige token
 
 // Hojas y sus encabezados (se crean solas si no existen).
@@ -48,7 +55,7 @@ function doGet() {
 
 // ---- Helpers ----
 function hoja_(nombre) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.openById(SHEET_ID); // script standalone: abre por ID
   var sh = ss.getSheetByName(nombre);
   if (!sh) {
     sh = ss.insertSheet(nombre);
@@ -60,6 +67,7 @@ function hoja_(nombre) {
 }
 
 // Inserta o actualiza filas usando la columna "id"/"codigo" como llave.
+// (La app siempre gana: al subir se sobrescribe la fila existente.)
 function upsert_(nombre, objetos) {
   var sh = hoja_(nombre);
   var cols = HOJAS[nombre];

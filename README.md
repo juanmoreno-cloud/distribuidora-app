@@ -58,19 +58,22 @@ inicio") y queda como una app más.
 
 ## Conectar con Google Sheets (sincronización)
 
-La app sube clientes y pedidos a tu Google Sheet, y puede bajar el catálogo de precios y los
-clientes registrados por otros vendedores. Para conectarla:
+Sincronización **bidireccional** con regla simple: la **app siempre gana**. Al sincronizar,
+la app **sube** clientes y pedidos (sobrescribe la fila en Sheets) y **baja** el catálogo/precios
+y los **clientes nuevos** (no pisa los clientes que ya existen en la app; no baja pedidos
+históricos). Para conectarla:
 
-### 1. Crear la hoja
-Crea un Google Sheet (o usa el que ya tienes). No necesitas crear las pestañas a mano: el
-script las crea solas (`Clientes`, `Pedidos`, `Catalogo`) con sus encabezados.
+### 1. La hoja
+El script usa la hoja por su **ID** (ya viene puesto en `SHEET_ID` dentro de `Code.gs`). No
+necesitas crear las pestañas a mano: se crean solas (`Clientes`, `Pedidos`, `Catalogo`).
 
-### 2. Pegar el script
-1. En el Google Sheet: menú **Extensiones → Apps Script**.
+### 2. Pegar el script (proyecto independiente / standalone)
+1. Abre tu proyecto de **Apps Script**.
 2. Borra lo que haya y pega **todo** el contenido de [`apps-script/Code.gs`](apps-script/Code.gs).
-3. (Opcional) Si quieres más seguridad, cambia la línea `var TOKEN = '';` por una clave tuya,
-   por ejemplo `var TOKEN = 'mi-clave-secreta';`. Esa misma clave la pondrás en la app.
-4. Guarda (ícono de disquete).
+   (Ya trae tu `SHEET_ID`; si algún día cambias de hoja, actualiza esa línea.)
+3. (Opcional) Para más seguridad, cambia `var TOKEN = '';` por una clave tuya y pon la misma
+   en la app.
+4. Guarda (Ctrl+S).
 
 ### 3. Implementar como Web App
 1. Arriba a la derecha: **Implementar → Nueva implementación**.
@@ -87,9 +90,10 @@ script las crea solas (`Clientes`, `Pedidos`, `Catalogo`) con sus encabezados.
 3. Toca **Probar conexión**. Si dice "Conexión exitosa", ya está.
 4. Toca **Descargar catálogo y clientes** para traer datos existentes (opcional).
 
-A partir de ahí, la app sincroniza sola: al volver el internet y cada 5 minutos. La insignia
-de la pantalla de inicio muestra **⏳ N** registros pendientes o **Al día**. También puedes
-tocarla para sincronizar manualmente.
+A partir de ahí, la app sincroniza sola (bidireccional) al volver el internet y cada 5 minutos:
+sube lo pendiente y baja catálogo/precios y clientes nuevos. La insignia de la pantalla de
+inicio muestra **⏳ N** registros pendientes o **Al día**; también puedes tocarla para
+sincronizar manualmente.
 
 ## Cómo funciona offline
 
