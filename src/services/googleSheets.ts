@@ -1,5 +1,6 @@
 import { db } from '../db/database';
 import type { Cliente, Pedido, Producto } from '../types';
+import { WEBAPP_URL_DEFAULT, TOKEN_DEFAULT } from '../config';
 
 // ====================================================================
 // Sincronización con Google Sheets a través de un Apps Script Web App.
@@ -14,9 +15,16 @@ export interface ConfigSync {
 }
 
 export async function leerConfigSync(): Promise<ConfigSync> {
+  // Usa lo que el admin haya guardado en ESTE equipo; si no hay nada,
+  // cae al valor "de fábrica" (src/config.ts), que viene en todos los equipos.
   const url = await db.configuracion.get('webapp_url');
   const tok = await db.configuracion.get('token');
-  return { webappUrl: (url?.valor as string) ?? '', token: (tok?.valor as string) ?? '' };
+  const guardadaUrl = (url?.valor as string) ?? '';
+  const guardadoTok = (tok?.valor as string) ?? '';
+  return {
+    webappUrl: guardadaUrl || WEBAPP_URL_DEFAULT,
+    token: guardadoTok || TOKEN_DEFAULT,
+  };
 }
 
 export async function guardarConfigSync(cfg: ConfigSync): Promise<void> {

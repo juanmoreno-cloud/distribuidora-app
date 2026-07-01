@@ -56,6 +56,22 @@ La carpeta `dist/` se puede subir tal cual a **Vercel**, **Netlify** o servirse 
 estático. Al ser una PWA, desde el teléfono se puede **instalar** ("Agregar a pantalla de
 inicio") y queda como una app más.
 
+## Publicar en la nube (Vercel) — recomendado para el equipo
+
+Publicar la app da **una sola dirección https** que todos los vendedores usan desde cualquier
+celular (no dependen de la IP del PC), y habilita el **GPS automático** (requiere https).
+
+1. Entra a [vercel.com](https://vercel.com) → **"Log in with GitHub"** y autoriza.
+2. **"Add New… → Project"** → importa el repo `distribuidora-app`.
+3. Vercel detecta **Vite** solo: Build = `npm run build`, Output = `dist`. Pulsa **Deploy**.
+4. Al terminar, tendrás una URL fija tipo `https://distribuidora-app.vercel.app` → esa es la que
+   usan todos. Cada `git push` a `main` **re-despliega solo**.
+
+El archivo `vercel.json` ya deja configurado el ruteo (para que `/clientes`, `/pedidos`, etc.
+funcionen al recargar). La **URL del Web App de Google Sheets viene fija de fábrica**
+(`src/config.ts`), así que ningún vendedor necesita configurarla; el admin puede cambiarla desde
+Configuración si algún día cambia el despliegue del Apps Script.
+
 ## Conectar con Google Sheets (sincronización)
 
 Sincronización **bidireccional** con regla simple: la **app siempre gana**. Al sincronizar,

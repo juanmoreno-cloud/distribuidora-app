@@ -3,6 +3,22 @@ import { db } from '../db/database';
 import type { Usuario, SesionAuth } from '../types';
 import { hashClave, verificarClave } from './hash';
 import { esClaveFuerte } from '../utils/validators';
+import { leerConfigSync, sincronizarTodo } from '../services/googleSheets';
+
+// Dispara una sincronización en segundo plano (al iniciar/restaurar sesión).
+// Es silenciosa: si no hay internet o falla, no molesta ni rompe nada; el
+// auto-sync periódico (useSync) reintentará. Sube pendientes y baja catálogo/clientes.
+async function dispararAutoSync(): Promise<void> {
+  if (!navigator.onLine) return;
+  try {
+    const { webappUrl } = await leerConfigSync();
+    if (!webappUrl) return;
+    await sincronizarTodo();
+    await db.configuracion.put({ clave: 'ultima_sync', valor: new Date().toISOString() });
+  } catch {
+    /* silencioso */
+  }
+}
 
 const CLAVE_SESION = 'distribuidora_auth';
 const EXPIRA_MS = 8 * 60 * 60 * 1000;     // 8 horas de inactividad
@@ -57,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (u && u.activo) {
           guardarSesionRaw({ ...s, timestamp: Date.now() });
           setUsuario(u);
+          void dispararAutoSync(); // sincroniza al reabrir la app
         } else {
           borrarSesionRaw();
         }
@@ -108,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ruta_asignada: u.ruta_asignada, timestamp: Date.now(),
     });
     setUsuario(u);
+    void dispararAutoSync(); // sincroniza al iniciar sesión
     return { ok: true, usuario: u };
   }, []);
 
