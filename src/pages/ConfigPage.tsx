@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plug, Loader2, Download, UserCog, ChevronRight, Trash2, RefreshCw, Lock } from 'lucide-react';
+import { ArrowLeft, Plug, Loader2, Download, UserCog, ChevronRight, Trash2, RefreshCw, Lock, Tags } from 'lucide-react';
 import { db } from '../db/database';
 import { leerConfigSync, guardarConfigSync, probarConexion, syncCatalogo, syncDesdeSheets, sincronizarTodo } from '../services/googleSheets';
 import { fechaLegible } from '../utils/formatters';
 import { toast } from '../components/Toast';
 import { useAuth } from '../auth/AuthContext';
+import { APP_VERSION } from '../config';
 
 // Pantalla de Configuración de la sincronización con Google Sheets.
 // TODOS los roles pueden entrar y sincronizar; solo el ADMIN edita la URL/token.
@@ -64,7 +65,7 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
     try {
       const r = await sincronizarTodo();
       await db.configuracion.put({ clave: 'ultima_sync', valor: new Date().toISOString() });
-      const subidos = r.subeClientes + r.subePedidos;
+      const subidos = r.subeClientes + r.subePedidos + r.subeCatalogo;
       const bajados = r.bajaCatalogo + r.bajaClientes + r.bajaPedidos;
       toast(subidos + bajados > 0 ? `Sincronizado: ${subidos} subido(s), ${bajados} bajado(s).` : 'Todo está al día ✓', 'success');
     } catch (e) {
@@ -87,9 +88,23 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
           {sincronizando ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />} Sincronizar ahora
         </button>
 
-        {/* Gestión de Usuarios y Papelera: SOLO admin */}
+        {/* Gestión de Usuarios, Catálogo y Papelera: SOLO admin */}
         {esAdmin && (
           <>
+            <button
+              className="card p-4 w-full flex items-center gap-3 active:scale-[0.99] transition"
+              onClick={() => { onCerrar(); navigate('/catalogo'); }}
+            >
+              <div className="bg-green-600 text-white rounded-xl w-10 h-10 flex items-center justify-center">
+                <Tags size={20} />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold">Catálogo y precios</p>
+                <p className="text-xs text-gray-500">Actualizar precios y stock (inventario)</p>
+              </div>
+              <ChevronRight size={18} className="text-gray-400" />
+            </button>
+
             <button
               className="card p-4 w-full flex items-center gap-3 active:scale-[0.99] transition"
               onClick={() => { onCerrar(); navigate('/usuarios'); }}
@@ -163,6 +178,8 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
             Última sincronización: {fechaLegible(String(ultimaSync.valor))}
           </p>
         )}
+
+        <p className="text-xs text-gray-400 text-center">Versión de la app: {APP_VERSION}</p>
       </div>
     </div>
   );

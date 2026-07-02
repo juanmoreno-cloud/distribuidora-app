@@ -29,7 +29,7 @@ var TOKEN = ''; // si lo dejas vacío, no se exige token
 var HOJAS = {
   Clientes: ['id','razon_social','nombre_fantasia','rif','telefono','direccion','tipo_cliente','zona','estado','latitud','longitud','contacto_nombre','vendedor_asignado','ruta','tipo_pago','limite_credito','observaciones','fecha_registro'],
   Pedidos: ['id','fecha_pedido','fecha_entrega','vendedor','ruta','cliente_id','cliente_nombre','tipo_pago','estado_pedido','total_pedido','notas','entregado','obs_entrega','lineas_json'],
-  Catalogo: ['codigo','descripcion','grupo','sub_grupo','precio_unitario','unidad'],
+  Catalogo: ['codigo','descripcion','grupo','sub_grupo','precio_unitario','unidad','stock'],
 };
 
 function doPost(e) {
@@ -40,6 +40,7 @@ function doPost(e) {
     switch (body.action) {
       case 'pushClientes': return json(upsert_('Clientes', body.payload || []));
       case 'pushPedidos':  return json(upsert_('Pedidos', body.payload || []));
+      case 'pushCatalogo': return json(upsert_('Catalogo', body.payload || []));
       case 'getClientes':  return json({ ok: true, rows: leer_('Clientes') });
       case 'getPedidos':   return json({ ok: true, rows: leer_('Pedidos') });
       case 'getCatalogo':  return json({ ok: true, rows: leer_('Catalogo') });
@@ -65,6 +66,17 @@ function hoja_(nombre) {
     sh.appendRow(HOJAS[nombre]);
   } else if (sh.getLastRow() === 0) {
     sh.appendRow(HOJAS[nombre]);
+  } else {
+    // Si la hoja existe con menos columnas (versión anterior), agrega los
+    // encabezados que falten (ej: la columna "stock" del inventario).
+    var cols = HOJAS[nombre];
+    var actuales = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+    for (var i = 0; i < cols.length; i++) {
+      if (actuales.indexOf(cols[i]) === -1) {
+        sh.getRange(1, actuales.length + 1).setValue(cols[i]);
+        actuales.push(cols[i]);
+      }
+    }
   }
   return sh;
 }

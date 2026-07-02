@@ -15,6 +15,7 @@ import CargaPage from './pages/CargaPage';
 import DespachoPage from './pages/DespachoPage';
 import UsuariosPage from './pages/UsuariosPage';
 import PapeleraPage from './pages/PapeleraPage';
+import CatalogoPage from './pages/CatalogoPage';
 
 export default function App() {
   const { usuario, cargando } = useAuth();
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="/despacho" element={<RequireRol><DespachoPage /></RequireRol>} />
         <Route path="/usuarios" element={<RequireRol><UsuariosPage /></RequireRol>} />
         <Route path="/papelera" element={<RequireRol><PapeleraPage /></RequireRol>} />
+        <Route path="/catalogo" element={<RequireRol><CatalogoPage /></RequireRol>} />
         <Route path="*" element={<Navigate to={PERMISOS[usuario.rol].rutaInicial} replace />} />
       </Routes>
       <BottomNav />

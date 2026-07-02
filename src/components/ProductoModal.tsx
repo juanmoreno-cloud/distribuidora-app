@@ -45,7 +45,12 @@ export default function ProductoModal({
             >
               <div className="min-w-0">
                 <p className="font-medium text-sm">{p.descripcion}</p>
-                <p className="text-xs text-gray-500">#{p.codigo} · {p.grupo} · {p.unidad}</p>
+                <p className="text-xs text-gray-500">
+                  #{p.codigo} · {p.grupo} · {p.unidad}
+                  {p.stock != null && (
+                    <span className={p.stock <= 0 ? 'text-red-600 font-medium' : 'text-green-700'}> · stock: {p.stock}</span>
+                  )}
+                </p>
               </div>
               <span className="font-semibold text-marca shrink-0">{formatoMoneda(p.precio_unitario)}</span>
             </button>

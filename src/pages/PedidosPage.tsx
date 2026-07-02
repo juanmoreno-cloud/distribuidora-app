@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import HeaderAcciones from '../components/HeaderAcciones';
 import NuevoPedido from '../components/NuevoPedido';
 import ConfirmModal from '../components/ConfirmModal';
+import EditarPedido from '../components/EditarPedido';
 import { db } from '../db/database';
 import { formatoMoneda, fechaLegible, hoyISO } from '../utils/formatters';
 import { leerSesion } from '../hooks/useSession';
@@ -48,6 +49,8 @@ function PedidosDelDia() {
   const sesion = leerSesion();
   const hoy = hoyISO();
   const [aEliminar, setAEliminar] = useState<Pedido | null>(null);
+  const [aEditar, setAEditar] = useState<Pedido | null>(null);
+  const [expandido, setExpandido] = useState<string | null>(null);
 
   // El admin ve TODOS los pedidos (para poder administrarlos); el vendedor,
   // solo los suyos tomados hoy. En ambos casos se excluyen los eliminados.
@@ -72,7 +75,17 @@ function PedidosDelDia() {
   return (
     <div className="p-4 space-y-2">
       <p className="text-sm text-gray-500">{pedidos.length} pedido(s){esAdmin ? '' : ' hoy'}</p>
-      {pedidos.map((p) => <PedidoCard key={p.id} pedido={p} esAdmin={esAdmin} onEliminar={() => setAEliminar(p)} />)}
+      {pedidos.map((p) => (
+        <PedidoCard
+          key={p.id}
+          pedido={p}
+          esAdmin={esAdmin}
+          abierto={expandido === p.id}
+          onToggle={() => setExpandido((cur) => (cur === p.id ? null : p.id))}
+          onEliminar={() => setAEliminar(p)}
+          onEditar={() => setAEditar(p)}
+        />
+      ))}
 
       {aEliminar && (
         <ConfirmModal
@@ -82,29 +95,62 @@ function PedidosDelDia() {
           onCancelar={() => setAEliminar(null)}
         />
       )}
+
+      {aEditar && <EditarPedido pedido={aEditar} onCerrar={() => setAEditar(null)} />}
     </div>
   );
 }
 
-function PedidoCard({ pedido: p, esAdmin, onEliminar }: { pedido: Pedido; esAdmin: boolean; onEliminar: () => void }) {
+function PedidoCard({
+  pedido: p, esAdmin, abierto, onToggle, onEliminar, onEditar,
+}: {
+  pedido: Pedido; esAdmin: boolean; abierto: boolean;
+  onToggle: () => void; onEliminar: () => void; onEditar: () => void;
+}) {
   return (
-    <div className="card p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-semibold truncate">{p.cliente_nombre}</p>
-          <p className="text-xs text-gray-500">{p.lineas.length} producto(s) · entrega {fechaLegible(p.fecha_entrega)}</p>
-          {esAdmin && <p className="text-[11px] text-gray-400">{p.vendedor}</p>}
+    <div className="card overflow-hidden">
+      {/* Encabezado: cualquier rol puede tocar para VER el detalle */}
+      <button className="w-full p-3 text-left" onClick={onToggle}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{p.cliente_nombre}</p>
+            <p className="text-xs text-gray-500">{p.lineas.length} producto(s) · entrega {fechaLegible(p.fecha_entrega)}</p>
+            {esAdmin && <p className="text-[11px] text-gray-400">{p.vendedor}</p>}
+          </div>
+          <div className="text-right shrink-0">
+            <p className="font-bold text-green-600">{formatoMoneda(p.total_pedido)}</p>
+            <p className="text-[11px] flex items-center justify-end gap-1">
+              {p.sincronizado ? '🟢 Sincronizado' : '🟡 Pendiente'}
+              {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </p>
+          </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="font-bold text-green-600">{formatoMoneda(p.total_pedido)}</p>
-          <p className="text-[11px]">{p.sincronizado ? '🟢 Sincronizado' : '🟡 Pendiente'}</p>
-        </div>
-      </div>
-      {esAdmin && (
-        <div className="flex justify-end mt-2">
-          <button className="text-red-500 flex items-center gap-1 text-xs font-medium p-1" onClick={onEliminar}>
-            <Trash2 size={15} /> Eliminar
-          </button>
+      </button>
+
+      {/* Detalle (solo lectura): productos, cantidades y precios */}
+      {abierto && (
+        <div className="px-3 pb-3 border-t border-gray-100 pt-2 space-y-2">
+          <div className="rounded-lg bg-gray-50 divide-y divide-gray-100">
+            {p.lineas.map((l) => (
+              <div key={l.producto_codigo} className="flex justify-between p-2 text-sm">
+                <span>{l.cantidad} × {l.producto_descripcion}</span>
+                <span className="text-gray-500">{formatoMoneda(l.subtotal)}</span>
+              </div>
+            ))}
+          </div>
+          {p.notas && <p className="text-xs text-gray-500">Notas: {p.notas}</p>}
+
+          {/* Editar/Eliminar: SOLO admin. El vendedor solo consulta. */}
+          {esAdmin && (
+            <div className="flex justify-end gap-2">
+              <button className="btn-ghost !min-h-[36px] !px-3 text-xs" onClick={onEditar}>
+                <Pencil size={14} /> Editar
+              </button>
+              <button className="text-red-500 flex items-center gap-1 text-xs font-medium px-3" onClick={onEliminar}>
+                <Trash2 size={15} /> Eliminar
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

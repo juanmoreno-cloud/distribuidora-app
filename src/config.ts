@@ -11,3 +11,7 @@ export const WEBAPP_URL_DEFAULT =
 
 // Token del Apps Script (vacío si no configuraste uno en el script).
 export const TOKEN_DEFAULT = '';
+
+// Versión visible de la app (se muestra en el login y en Configuración).
+// Súbela en cada entrega: sirve para saber qué versión corre cada teléfono.
+export const APP_VERSION = 'v7';

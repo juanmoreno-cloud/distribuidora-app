@@ -105,6 +105,8 @@ export interface Producto {
   sub_grupo: string;
   precio_unitario: number;
   unidad: string;
+  stock?: number;          // inventario disponible (lo administra el admin)
+  sincronizado?: boolean;  // false = precio/stock editado localmente, pendiente de subir
 }
 
 // -------------------- Pedido --------------------

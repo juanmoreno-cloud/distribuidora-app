@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import SyncBadge from './SyncBadge';
@@ -19,7 +20,9 @@ export default function HeaderAcciones() {
       <button className="btn-ghost !min-h-[40px] !px-3 text-sm" onClick={logout} aria-label="Cerrar sesión">
         <LogOut size={18} />
       </button>
-      {mostrarConfig && <ConfigPage onCerrar={() => setMostrarConfig(false)} />}
+      {/* Portal al body: el header usa backdrop-blur, que "atrapa" a los
+          elementos con position:fixed y recortaba esta pantalla en Carga/Despacho. */}
+      {mostrarConfig && createPortal(<ConfigPage onCerrar={() => setMostrarConfig(false)} />, document.body)}
     </div>
   );
 }

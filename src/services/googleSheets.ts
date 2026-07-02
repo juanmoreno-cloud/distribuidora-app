@@ -1,5 +1,5 @@
 import { db } from '../db/database';
-import type { Cliente, Pedido, Producto } from '../types';
+import type { Cliente, Pedido } from '../types';
 import { WEBAPP_URL_DEFAULT, TOKEN_DEFAULT } from '../config';
 
 // ====================================================================
@@ -72,21 +72,49 @@ export async function syncPedidos(): Promise<number> {
   return pendientes.length;
 }
 
-// Baja el catálogo desde la hoja y actualiza los precios locales.
+// Sube precios/stock editados por el admin en la app (pendientes).
+export async function syncCatalogoPush(): Promise<number> {
+  const pendientes = await db.productos.filter((p) => p.sincronizado === false).toArray();
+  if (pendientes.length === 0) return 0;
+  try {
+    await llamar('pushCatalogo', pendientes.map((p) => ({
+      codigo: p.codigo, descripcion: p.descripcion, grupo: p.grupo, sub_grupo: p.sub_grupo,
+      precio_unitario: p.precio_unitario, unidad: p.unidad, stock: p.stock ?? '',
+    })));
+  } catch (e) {
+    // Script viejo sin pushCatalogo: no romper el resto de la sincronización.
+    console.warn('pushCatalogo no disponible (¿falta redeployar el Apps Script?):', (e as Error).message);
+    return 0;
+  }
+  await db.productos.bulkPut(pendientes.map((p) => ({ ...p, sincronizado: true })));
+  return pendientes.length;
+}
+
+// Baja el catálogo desde la hoja y actualiza precios/stock locales.
+// "La app gana": no pisa productos con ediciones locales pendientes de subir.
 export async function syncCatalogo(): Promise<number> {
   const data = await llamar('getCatalogo');
   const rows = (data.rows as any[]) ?? [];
   if (rows.length === 0) return 0;
-  const productos: Producto[] = rows.map((r) => ({
-    codigo: Number(r.codigo),
-    descripcion: String(r.descripcion),
-    grupo: String(r.grupo ?? ''),
-    sub_grupo: String(r.sub_grupo ?? ''),
-    precio_unitario: Number(r.precio_unitario) || 0,
-    unidad: String(r.unidad ?? ''),
-  })).filter((p) => p.codigo);
-  await db.productos.bulkPut(productos);
-  return productos.length;
+  let actualizados = 0;
+  for (const r of rows) {
+    const codigo = Number(r.codigo);
+    if (!codigo) continue;
+    const local = await db.productos.get(codigo);
+    if (local && local.sincronizado === false) continue; // edición local pendiente: no pisar
+    await db.productos.put({
+      codigo,
+      descripcion: String(r.descripcion),
+      grupo: String(r.grupo ?? ''),
+      sub_grupo: String(r.sub_grupo ?? ''),
+      precio_unitario: Number(r.precio_unitario) || 0,
+      unidad: String(r.unidad ?? ''),
+      stock: r.stock !== '' && r.stock != null ? Number(r.stock) : undefined,
+      sincronizado: true,
+    });
+    actualizados++;
+  }
+  return actualizados;
 }
 
 // Baja clientes desde la hoja: agrega los NUEVOS (registrados en otros equipos)
@@ -175,6 +203,7 @@ export async function syncPedidosDesdeSheets(): Promise<number> {
 export interface ResultadoSync {
   subeClientes: number;   // clientes subidos
   subePedidos: number;    // pedidos subidos
+  subeCatalogo: number;   // precios/stock editados por el admin, subidos
   bajaCatalogo: number;   // productos/precios actualizados desde Sheets
   bajaClientes: number;   // clientes nuevos/eliminados traídos desde Sheets
   bajaPedidos: number;    // pedidos nuevos/eliminados traídos desde Sheets
@@ -195,10 +224,11 @@ export async function sincronizarTodo(): Promise<ResultadoSync> {
     try {
       const subeClientes = await syncClientes();
       const subePedidos = await syncPedidos();
+      const subeCatalogo = await syncCatalogoPush();
       const bajaCatalogo = await syncCatalogo();
       const bajaClientes = await syncDesdeSheets();
       const bajaPedidos = await syncPedidosDesdeSheets();
-      return { subeClientes, subePedidos, bajaCatalogo, bajaClientes, bajaPedidos };
+      return { subeClientes, subePedidos, subeCatalogo, bajaCatalogo, bajaClientes, bajaPedidos };
     } finally {
       syncEnCurso = null;
     }

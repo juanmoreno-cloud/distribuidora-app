@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Truck, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { PERMISOS } from '../auth/permisos';
+import { APP_VERSION } from '../config';
 
 // Pantalla de inicio de sesión con usuario y contraseña.
 export default function LoginPage() {
@@ -82,6 +83,8 @@ export default function LoginPage() {
           ¿Problemas? Contacta al admin: <a className="text-marca font-medium" href="tel:04122168070">0412-2168070</a>
         </p>
       </form>
+
+      <p className="text-white/60 text-xs mt-4">Distribuidora App · {APP_VERSION}</p>
     </div>
   );
 }

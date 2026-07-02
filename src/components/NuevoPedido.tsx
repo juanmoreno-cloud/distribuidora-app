@@ -40,6 +40,16 @@ export default function NuevoPedido() {
     cliente.limite_credito > 0 &&
     totalPendiente + total > cliente.limite_credito;
 
+  // Advertencia de inventario: líneas que piden más de lo disponible (no bloquea).
+  const productos = useLiveQuery(() => db.productos.toArray(), []) ?? [];
+  const sinStock = useMemo(() => {
+    const mapa = new Map(productos.map((p) => [p.codigo, p.stock]));
+    return lineas.filter((l) => {
+      const s = mapa.get(l.producto_codigo);
+      return s != null && l.cantidad > s;
+    });
+  }, [lineas, productos]);
+
   function agregarProducto(p: Producto) {
     setMostrarModal(false);
     setLineas((prev) => {
@@ -239,6 +249,13 @@ export default function NuevoPedido() {
         <div className="card p-3 bg-orange-50 border-orange-200 flex items-center gap-2 text-orange-800 text-sm">
           <AlertTriangle size={18} />
           Este pedido supera el límite de crédito disponible. Quedará para aprobación del admin.
+        </div>
+      )}
+
+      {sinStock.length > 0 && (
+        <div className="card p-3 bg-orange-50 border-orange-200 text-orange-800 text-sm">
+          <p className="flex items-center gap-2 font-medium"><AlertTriangle size={18} /> Inventario insuficiente:</p>
+          {sinStock.map((l) => <p key={l.producto_codigo} className="text-xs mt-1">• {l.producto_descripcion} (pides {l.cantidad})</p>)}
         </div>
       )}
 
