@@ -79,7 +79,7 @@ export default function LoginPage() {
         </button>
 
         <p className="text-xs text-gray-500 text-center">
-          ¿Olvidaste tu contraseña? Contacta al administrador.
+          ¿Problemas? Contacta al admin: <a className="text-marca font-medium" href="tel:04122168070">0412-2168070</a>
         </p>
       </form>
     </div>

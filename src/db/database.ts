@@ -47,5 +47,12 @@ export async function seedSiVacia(): Promise<void> {
   const totalUsuarios = await db.usuarios.count();
   if (totalUsuarios === 0) {
     await db.usuarios.bulkAdd(USUARIOS_SEED);
+  } else {
+    // Normalización: los usuarios de fábrica ya no exigen cambio de clave.
+    // (Equipos sembrados con la versión anterior quedaban pidiéndolo siempre.)
+    // Los usuarios creados por el admin conservan su configuración.
+    await db.usuarios
+      .filter((u) => u.creado_por === 'sistema' && u.debe_cambiar_clave)
+      .modify({ debe_cambiar_clave: false });
   }
 }

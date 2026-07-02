@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Trash2 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import HeaderAcciones from '../components/HeaderAcciones';
 import NuevoPedido from '../components/NuevoPedido';
 import ConfirmModal from '../components/ConfirmModal';
 import { db } from '../db/database';
@@ -19,7 +20,7 @@ export default function PedidosPage() {
 
   return (
     <div>
-      <PageHeader titulo="Pedidos" />
+      <PageHeader titulo="Pedidos" accion={<HeaderAcciones />} />
       <div className="flex gap-2 p-3 bg-gray-100 sticky top-[53px] z-20">
         <TabBtn activo={tab === 'nuevo'} onClick={() => setTab('nuevo')}>Nuevo pedido</TabBtn>
         <TabBtn activo={tab === 'dia'} onClick={() => setTab('dia')}>Pedidos del día</TabBtn>

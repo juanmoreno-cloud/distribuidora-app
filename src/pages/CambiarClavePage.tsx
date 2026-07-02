@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { KeyRound, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { KeyRound, Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { PERMISOS } from '../auth/permisos';
 import { esClaveFuerte } from '../utils/validators';
@@ -8,7 +8,7 @@ import { toast } from '../components/Toast';
 
 // Cambio obligatorio de la contraseña temporal en el primer login.
 export default function CambiarClavePage() {
-  const { usuario, cambiarClave } = useAuth();
+  const { usuario, cambiarClave, logout } = useAuth();
   const navigate = useNavigate();
   const [actual, setActual] = useState('');
   const [nueva, setNueva] = useState('');
@@ -79,6 +79,11 @@ export default function CambiarClavePage() {
 
         <button className="btn-success w-full" disabled={guardando || !fuerte || !coincide}>
           {guardando ? <Loader2 className="animate-spin" size={18} /> : null} GUARDAR Y CONTINUAR
+        </button>
+
+        {/* Salida de emergencia: vuelve al login sin cambiar la clave. */}
+        <button type="button" className="btn-ghost w-full" onClick={logout}>
+          <ArrowLeft size={16} /> Volver al login
         </button>
       </form>
     </div>

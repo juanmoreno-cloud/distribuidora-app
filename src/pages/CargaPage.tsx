@@ -23,8 +23,12 @@ export default function CargaPage() {
   const sesion = leerSesion();
   const { usuario } = useAuth();
   const soloLectura = usuario?.rol === 'almacenista';
+  const puedeEditar = usuario?.rol === 'admin';
   const [fecha, setFecha] = useState(mananaISO());
   const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
+  // Ajustes del admin a las cantidades (solo afectan la vista y el PDF,
+  // NO cambian los pedidos originales). Se limpian al cambiar fecha/ruta.
+  const [ajustes, setAjustes] = useState<Record<number, number>>({});
 
   const pedidos = useLiveQuery(() => db.pedidos.toArray(), []) ?? [];
   const productos = useLiveQuery(() => db.productos.toArray(), []) ?? [];
@@ -60,9 +64,18 @@ export default function CargaPage() {
       ordenGrupo(a.grupo) - ordenGrupo(b.grupo) || a.producto_descripcion.localeCompare(b.producto_descripcion));
   }, [pedidos, productos, fecha, ruta]);
 
+  // Items con los ajustes del admin aplicados (vista y PDF).
+  const itemsFinales = useMemo<CargaItem[]>(
+    () => items.map((i) => ajustes[i.producto_codigo] != null ? { ...i, cantidad_total: ajustes[i.producto_codigo] } : i),
+    [items, ajustes],
+  );
+
+  function cambiarFecha(v: string) { setFecha(v); setAjustes({}); }
+  function cambiarRuta(v: string) { setRuta(v); setAjustes({}); }
+
   function descargarPdf() {
-    if (items.length === 0) { toast('No hay nada que cargar para esa fecha y ruta.', 'error'); return; }
-    generarPdfCarga(items, fecha, ruta);
+    if (itemsFinales.length === 0) { toast('No hay nada que cargar para esa fecha y ruta.', 'error'); return; }
+    generarPdfCarga(itemsFinales, fecha, ruta);
   }
 
   return (
@@ -79,24 +92,24 @@ export default function CargaPage() {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Fecha de entrega</label>
-            <input type="date" className="input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <input type="date" className="input" value={fecha} onChange={(e) => cambiarFecha(e.target.value)} />
           </div>
           <div>
             <label className="label">Ruta</label>
-            <select className="input" value={ruta} onChange={(e) => setRuta(e.target.value)}>
+            <select className="input" value={ruta} onChange={(e) => cambiarRuta(e.target.value)}>
               {RUTAS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
         </div>
 
-        {items.length === 0 ? (
+        {itemsFinales.length === 0 ? (
           <div className="card p-8 text-center text-gray-400">
             <Package size={36} className="mx-auto mb-2" />
             No hay pedidos para esta fecha y ruta.
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-500">{items.length} producto(s) a cargar</p>
+            <p className="text-sm text-gray-500">{itemsFinales.length} producto(s) a cargar</p>
             <div className="card overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500 text-xs">
@@ -107,19 +120,35 @@ export default function CargaPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {items.map((i) => (
+                  {itemsFinales.map((i) => (
                     <tr key={i.producto_codigo}>
                       <td className="p-2">
                         <p className="font-medium">{i.producto_descripcion}</p>
                         <p className="text-[11px] text-gray-400">#{i.producto_codigo} · {i.unidad}</p>
                       </td>
                       <td className="p-2 text-gray-500">{i.grupo}</td>
-                      <td className="p-2 text-right font-bold">{i.cantidad_total}</td>
+                      <td className="p-2 text-right font-bold">
+                        {puedeEditar ? (
+                          <input
+                            type="number" min={0} inputMode="numeric"
+                            className="input !min-h-[36px] !px-1 w-16 text-right font-bold"
+                            value={i.cantidad_total}
+                            onChange={(e) => setAjustes((prev) => ({ ...prev, [i.producto_codigo]: Math.max(0, Number(e.target.value) || 0) }))}
+                          />
+                        ) : (
+                          i.cantidad_total
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {puedeEditar && Object.keys(ajustes).length > 0 && (
+              <p className="text-xs text-amber-600 text-center">
+                Cantidades ajustadas manualmente: se usan en el PDF, pero no cambian los pedidos.
+              </p>
+            )}
 
             <button className="btn-primary w-full" onClick={descargarPdf}>
               <FileText size={18} /> Generar PDF de Carga
