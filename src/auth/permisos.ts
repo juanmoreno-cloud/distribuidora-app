@@ -29,7 +29,8 @@ export const PERMISOS: Record<Rol, PermisoRol> = {
   admin: {
     rutaInicial: '/',
     rutasPermitidas: ['/', '/clientes', '/pedidos', '/carga', '/despacho', '/usuarios', '/papelera'],
-    tabs: ['inicio', 'clientes', 'pedidos', 'despacho'],
+    // El admin supervisa TODO: los 5 módulos visibles en la barra.
+    tabs: ['inicio', 'clientes', 'pedidos', 'carga', 'despacho'],
   },
 };
 

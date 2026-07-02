@@ -32,7 +32,7 @@ export function useSync() {
       await db.configuracion.put({ clave: 'ultima_sync', valor: new Date().toISOString() });
       if (!silencioso) {
         const subidos = r.subeClientes + r.subePedidos;
-        const bajados = r.bajaCatalogo + r.bajaClientes;
+        const bajados = r.bajaCatalogo + r.bajaClientes + r.bajaPedidos;
         const partes: string[] = [];
         if (subidos > 0) partes.push(`${subidos} subido(s)`);
         if (bajados > 0) partes.push(`${bajados} actualizado(s) desde Sheets`);

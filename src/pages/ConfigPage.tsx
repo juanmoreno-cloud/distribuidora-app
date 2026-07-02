@@ -65,7 +65,7 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
       const r = await sincronizarTodo();
       await db.configuracion.put({ clave: 'ultima_sync', valor: new Date().toISOString() });
       const subidos = r.subeClientes + r.subePedidos;
-      const bajados = r.bajaCatalogo + r.bajaClientes;
+      const bajados = r.bajaCatalogo + r.bajaClientes + r.bajaPedidos;
       toast(subidos + bajados > 0 ? `Sincronizado: ${subidos} subido(s), ${bajados} bajado(s).` : 'Todo está al día ✓', 'success');
     } catch (e) {
       toast('No se pudo sincronizar: ' + (e as Error).message, 'error');

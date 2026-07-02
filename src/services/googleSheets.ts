@@ -89,41 +89,121 @@ export async function syncCatalogo(): Promise<number> {
   return productos.length;
 }
 
-// Baja clientes desde la hoja (los que registraron otros vendedores).
+// Baja clientes desde la hoja: agrega los NUEVOS (registrados en otros equipos)
+// y propaga los ELIMINADOS por el admin a este dispositivo.
+// Regla "la app gana": nunca pisa un cliente con cambios locales pendientes.
 export async function syncDesdeSheets(): Promise<number> {
   const data = await llamar('getClientes');
   const rows = (data.rows as any[]) ?? [];
-  let nuevos = 0;
+  let cambios = 0;
   for (const r of rows) {
     const id = String(r.id ?? r.rif ?? '').trim();
     if (!id) continue;
-    if (String(r.estado).toUpperCase() === 'ELIMINADO') continue; // no re-importar borrados
+    const borradoEnSheets = String(r.estado).toUpperCase() === 'ELIMINADO';
     const existe = await db.clientes.get(id);
+
     if (!existe) {
-      await db.clientes.put(filaACliente(r, id));
-      nuevos++;
+      // Nuevo (de otro equipo). Los borrados no se re-importan.
+      if (!borradoEnSheets) {
+        await db.clientes.put(filaACliente(r, id));
+        cambios++;
+      }
+      continue;
+    }
+
+    // Ya existe aquí. Si tiene cambios locales sin subir, la app gana: no tocar.
+    if (!existe.sincronizado) continue;
+
+    // Propagar el borrado del admin a este dispositivo.
+    if (borradoEnSheets && !existe.eliminado) {
+      await db.clientes.update(id, { eliminado: true, sincronizado: true });
+      cambios++;
     }
   }
-  return nuevos;
+  return cambios;
+}
+
+// Baja pedidos desde la hoja (los de otros equipos), para que el admin pueda
+// supervisar y Carga/Despacho funcionen en el celular del almacenista y el
+// despachador. Solo pedidos recientes (entrega en los últimos 30 días o futura),
+// para no llenar los teléfonos de historial. "La app gana": nunca pisa un
+// pedido que ya exista en este dispositivo; solo agrega los que faltan y
+// propaga los eliminados.
+const DIAS_HISTORIAL_PEDIDOS = 30;
+
+export async function syncPedidosDesdeSheets(): Promise<number> {
+  let data: any;
+  try {
+    data = await llamar('getPedidos');
+  } catch (e) {
+    // Si el Apps Script desplegado aún no tiene la acción getPedidos (versión
+    // vieja), no rompemos el resto de la sincronización: solo avisamos en consola.
+    console.warn('getPedidos no disponible en el Web App (¿falta redeployar el Apps Script?):', (e as Error).message);
+    return 0;
+  }
+  const rows = (data.rows as any[]) ?? [];
+  const corte = new Date();
+  corte.setDate(corte.getDate() - DIAS_HISTORIAL_PEDIDOS);
+
+  let cambios = 0;
+  for (const r of rows) {
+    const id = String(r.id ?? '').trim();
+    if (!id) continue;
+    const borradoEnSheets = String(r.estado_pedido).toLowerCase() === 'eliminado';
+    const existe = await db.pedidos.get(id);
+
+    if (!existe) {
+      if (borradoEnSheets) continue; // borrados no se re-importan
+      const p = filaAPedido(r, id);
+      if (!p) continue; // fila corrupta: se ignora sin romper la sync
+      if (new Date(p.fecha_entrega) < corte) continue; // muy viejo: no bajar
+      await db.pedidos.put(p);
+      cambios++;
+      continue;
+    }
+
+    if (!existe.sincronizado) continue; // cambios locales pendientes: la app gana
+
+    if (borradoEnSheets && !existe.eliminado) {
+      await db.pedidos.update(id, { eliminado: true, sincronizado: true });
+      cambios++;
+    }
+  }
+  return cambios;
 }
 
 export interface ResultadoSync {
   subeClientes: number;   // clientes subidos
   subePedidos: number;    // pedidos subidos
   bajaCatalogo: number;   // productos/precios actualizados desde Sheets
-  bajaClientes: number;   // clientes nuevos traídos desde Sheets
+  bajaClientes: number;   // clientes nuevos/eliminados traídos desde Sheets
+  bajaPedidos: number;    // pedidos nuevos/eliminados traídos desde Sheets
 }
+
+// Candado: evita sincronizaciones simultáneas (login + volver internet +
+// intervalo de 5 min + botón manual pueden coincidir). Si ya hay una en
+// curso, se reutiliza esa misma promesa.
+let syncEnCurso: Promise<ResultadoSync> | null = null;
 
 // Sincronización BIDIRECCIONAL (la que dispara el botón y el auto-sync):
 //  1) SUBE clientes y pedidos pendientes (la app siempre gana: sobrescribe Sheets).
-//  2) BAJA catálogo/precios y clientes NUEVOS (no pisa los que ya existen en la app;
-//     no baja pedidos históricos).
+//  2) BAJA catálogo/precios, clientes y pedidos nuevos de otros equipos, y
+//     propaga los eliminados. Nunca pisa cambios locales pendientes.
 export async function sincronizarTodo(): Promise<ResultadoSync> {
-  const subeClientes = await syncClientes();
-  const subePedidos = await syncPedidos();
-  const bajaCatalogo = await syncCatalogo();
-  const bajaClientes = await syncDesdeSheets();
-  return { subeClientes, subePedidos, bajaCatalogo, bajaClientes };
+  if (syncEnCurso) return syncEnCurso;
+  syncEnCurso = (async () => {
+    try {
+      const subeClientes = await syncClientes();
+      const subePedidos = await syncPedidos();
+      const bajaCatalogo = await syncCatalogo();
+      const bajaClientes = await syncDesdeSheets();
+      const bajaPedidos = await syncPedidosDesdeSheets();
+      return { subeClientes, subePedidos, bajaCatalogo, bajaClientes, bajaPedidos };
+    } finally {
+      syncEnCurso = null;
+    }
+  })();
+  return syncEnCurso;
 }
 
 // ---- Conversión a/desde fila de la hoja ----
@@ -166,5 +246,36 @@ function pedidoAFila(p: Pedido) {
     estado_pedido: p.eliminado ? 'eliminado' : p.estado_pedido, total_pedido: p.total_pedido, notas: p.notas,
     entregado: p.entregado ? 'SÍ' : '', obs_entrega: p.obs_entrega ?? '',
     lineas_json: JSON.stringify(p.lineas),
+  };
+}
+
+// Fila de la hoja → Pedido local. Devuelve null si la fila está corrupta
+// (por ejemplo, lineas_json mal editado a mano en Sheets).
+function filaAPedido(r: any, id: string): Pedido | null {
+  let lineas: Pedido['lineas'];
+  try {
+    lineas = JSON.parse(String(r.lineas_json ?? '[]'));
+    if (!Array.isArray(lineas)) return null;
+  } catch {
+    return null;
+  }
+  const fechaEntrega = String(r.fecha_entrega ?? '');
+  if (!fechaEntrega || isNaN(new Date(fechaEntrega).getTime())) return null;
+  return {
+    id,
+    fecha_pedido: String(r.fecha_pedido ?? new Date().toISOString()),
+    fecha_entrega: fechaEntrega,
+    vendedor: String(r.vendedor ?? ''),
+    ruta: String(r.ruta ?? ''),
+    cliente_id: String(r.cliente_id ?? ''),
+    cliente_nombre: String(r.cliente_nombre ?? ''),
+    tipo_pago: (r.tipo_pago || 'Contado') as Pedido['tipo_pago'],
+    estado_pedido: (r.estado_pedido || 'Pendiente') as Pedido['estado_pedido'],
+    lineas,
+    total_pedido: Number(r.total_pedido) || 0,
+    notas: String(r.notas ?? ''),
+    sincronizado: true, // viene de Sheets: ya está allá
+    entregado: String(r.entregado ?? '').toUpperCase().startsWith('S'),
+    obs_entrega: String(r.obs_entrega ?? ''),
   };
 }

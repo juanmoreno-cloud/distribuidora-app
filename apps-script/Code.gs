@@ -16,8 +16,10 @@
  *     Inicio → engranaje (Configuración) → URL del Web App.
  *
  * Regla de negocio: la APP siempre gana. Al subir (push) se sobrescribe la
- * fila en Sheets. Al bajar (pull) solo se traen catálogo/precios y clientes
- * NUEVOS; los clientes que ya existen en la app NO se pisan desde Sheets.
+ * fila en Sheets. Al bajar (pull) se traen catálogo/precios, clientes NUEVOS
+ * y pedidos NUEVOS (recientes); lo que ya existe en la app NO se pisa desde
+ * Sheets. Los registros marcados ELIMINADO/eliminado en Sheets se ocultan
+ * también en los demás dispositivos.
  */
 
 var SHEET_ID = '1GwYPKp0KaKZaLplHEV2U-wK6p2BSNHt4v2mBkDbDuIw';
@@ -39,6 +41,7 @@ function doPost(e) {
       case 'pushClientes': return json(upsert_('Clientes', body.payload || []));
       case 'pushPedidos':  return json(upsert_('Pedidos', body.payload || []));
       case 'getClientes':  return json({ ok: true, rows: leer_('Clientes') });
+      case 'getPedidos':   return json({ ok: true, rows: leer_('Pedidos') });
       case 'getCatalogo':  return json({ ok: true, rows: leer_('Catalogo') });
       case 'ping':         return json({ ok: true, pong: true });
       default:             return json({ ok: false, error: 'Acción desconocida: ' + body.action });
