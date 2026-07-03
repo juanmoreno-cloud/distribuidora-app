@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { FileText, Package, Lock } from 'lucide-react';
+import { FileText, Package, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
@@ -22,18 +22,23 @@ function ordenGrupo(g: string): number {
 export default function CargaPage() {
   const sesion = leerSesion();
   const { usuario } = useAuth();
-  const soloLectura = usuario?.rol === 'almacenista';
+  // Almacenista y despachador consultan; solo el admin edita.
+  const soloLectura = usuario?.rol === 'almacenista' || usuario?.rol === 'despachador';
   const esAdmin = usuario?.rol === 'admin';
   const [fecha, setFecha] = useState(mananaISO());
   const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
+  const [expandido, setExpandido] = useState<number | null>(null);
 
   const pedidos = useLiveQuery(() => db.pedidos.toArray(), []) ?? [];
   const productos = useLiveQuery(() => db.productos.toArray(), []) ?? [];
 
   // Agrupa los pedidos de esa fecha+ruta sumando cantidades por producto.
-  const items = useMemo<CargaItem[]>(() => {
+  // Además guarda el DESGLOSE por pedido, para que el admin edite desde aquí.
+  interface DesglosePedido { pedidoId: string; cliente: string; cantidad: number }
+  const { items, desglose } = useMemo(() => {
     const mapaProd = new Map<number, Producto>(productos.map((p) => [p.codigo, p]));
     const acc = new Map<number, CargaItem>();
+    const des = new Map<number, DesglosePedido[]>();
     for (const ped of pedidos as Pedido[]) {
       if (ped.eliminado) continue;
       if (ped.fecha_entrega.slice(0, 10) !== fecha) continue;
@@ -54,12 +59,37 @@ export default function CargaPage() {
             unidad: prod?.unidad ?? '',
           });
         }
+        const lista = des.get(l.producto_codigo) ?? [];
+        lista.push({ pedidoId: ped.id, cliente: ped.cliente_nombre, cantidad: l.cantidad });
+        des.set(l.producto_codigo, lista);
       }
     }
     // Ordena por grupo (orden de carga) y luego por descripción.
-    return [...acc.values()].sort((a, b) =>
+    const ordenados = [...acc.values()].sort((a, b) =>
       ordenGrupo(a.grupo) - ordenGrupo(b.grupo) || a.producto_descripcion.localeCompare(b.producto_descripcion));
+    return { items: ordenados, desglose: des };
   }, [pedidos, productos, fecha, ruta]);
+
+  // Edición del admin: cambia la cantidad de ese producto EN el pedido real.
+  // Cantidad 0 = quitar el producto del pedido. Carga/Despacho se recalculan solos.
+  async function actualizarCantidad(pedidoId: string, codigo: number, cantidad: number) {
+    const p = await db.pedidos.get(pedidoId);
+    if (!p) return;
+    let lineas = p.lineas;
+    if (cantidad <= 0) {
+      if (p.lineas.length <= 1) {
+        toast('Es el único producto del pedido. Para quitarlo, elimina el pedido en Pedidos.', 'error');
+        return;
+      }
+      lineas = p.lineas.filter((l) => l.producto_codigo !== codigo);
+    } else {
+      lineas = p.lineas.map((l) =>
+        l.producto_codigo === codigo ? { ...l, cantidad, subtotal: cantidad * l.precio_unitario } : l);
+    }
+    const total = lineas.reduce((s, l) => s + l.subtotal, 0);
+    await db.pedidos.update(pedidoId, { lineas, total_pedido: total, sincronizado: false });
+    toast('Pedido actualizado ✓', 'success');
+  }
 
   function descargarPdf() {
     if (items.length === 0) { toast('No hay nada que cargar para esa fecha y ruta.', 'error'); return; }
@@ -92,7 +122,7 @@ export default function CargaPage() {
 
         {esAdmin && (
           <p className="text-xs text-gray-400">
-            Para cambiar cantidades, edita el pedido en <b>Pedidos</b>: la carga y el despacho se actualizan solos.
+            Toca un producto para ver de qué pedidos viene y <b>editar las cantidades aquí mismo</b>: los pedidos, la carga y el despacho se actualizan solos.
           </p>
         )}
 
@@ -115,14 +145,15 @@ export default function CargaPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {items.map((i) => (
-                    <tr key={i.producto_codigo}>
-                      <td className="p-2">
-                        <p className="font-medium">{i.producto_descripcion}</p>
-                        <p className="text-[11px] text-gray-400">#{i.producto_codigo} · {i.unidad}</p>
-                      </td>
-                      <td className="p-2 text-gray-500">{i.grupo}</td>
-                      <td className="p-2 text-right font-bold">{i.cantidad_total}</td>
-                    </tr>
+                    <FilaCarga
+                      key={i.producto_codigo}
+                      item={i}
+                      esAdmin={esAdmin}
+                      abierto={expandido === i.producto_codigo}
+                      onToggle={() => setExpandido((cur) => (cur === i.producto_codigo ? null : i.producto_codigo))}
+                      desglose={desglose.get(i.producto_codigo) ?? []}
+                      onActualizar={actualizarCantidad}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -138,5 +169,60 @@ export default function CargaPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Fila de la tabla de carga. Para el admin es expandible: muestra de qué
+// pedidos viene la cantidad y permite editarla por pedido (onBlur guarda).
+function FilaCarga({
+  item: i, esAdmin, abierto, onToggle, desglose, onActualizar,
+}: {
+  item: CargaItem;
+  esAdmin: boolean;
+  abierto: boolean;
+  onToggle: () => void;
+  desglose: { pedidoId: string; cliente: string; cantidad: number }[];
+  onActualizar: (pedidoId: string, codigo: number, cantidad: number) => void;
+}) {
+  return (
+    <>
+      <tr onClick={esAdmin ? onToggle : undefined} className={esAdmin ? 'cursor-pointer active:bg-gray-50' : ''}>
+        <td className="p-2">
+          <p className="font-medium flex items-center gap-1">
+            {i.producto_descripcion}
+            {esAdmin && (abierto ? <ChevronUp size={13} className="text-gray-400" /> : <ChevronDown size={13} className="text-gray-400" />)}
+          </p>
+          <p className="text-[11px] text-gray-400">#{i.producto_codigo} · {i.unidad}</p>
+        </td>
+        <td className="p-2 text-gray-500">{i.grupo}</td>
+        <td className="p-2 text-right font-bold">{i.cantidad_total}</td>
+      </tr>
+      {esAdmin && abierto && (
+        <tr>
+          <td colSpan={3} className="p-2 bg-gray-50">
+            <div className="space-y-1">
+              {desglose.map((d) => (
+                <div key={d.pedidoId} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="truncate text-gray-600">{d.cliente}</span>
+                  <input
+                    type="number" min={0} inputMode="numeric"
+                    className="input !min-h-[36px] !px-1 w-16 text-right"
+                    // key con la cantidad: si otro equipo la cambia, el input se refresca
+                    key={`${d.pedidoId}-${d.cantidad}`}
+                    defaultValue={d.cantidad}
+                    onClick={(e) => e.stopPropagation()}
+                    onBlur={(e) => {
+                      const v = Math.max(0, Number(e.target.value) || 0);
+                      if (v !== d.cantidad) onActualizar(d.pedidoId, i.producto_codigo, v);
+                    }}
+                  />
+                </div>
+              ))}
+              <p className="text-[10px] text-gray-400">Cantidad 0 = quitar el producto de ese pedido.</p>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

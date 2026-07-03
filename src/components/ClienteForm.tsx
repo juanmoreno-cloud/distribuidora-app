@@ -11,10 +11,13 @@ import { esRifValido, esTelefonoValido } from '../utils/validators';
 import { uuid } from '../utils/uuid';
 import { toast } from './Toast';
 import { leerSesion } from '../hooks/useSession';
+import { useAuth } from '../auth/AuthContext';
 
 // Formulario para registrar un cliente nuevo (offline-first).
 export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
   const sesion = leerSesion();
+  const { usuario } = useAuth();
+  const esAdmin = usuario?.rol === 'admin';
   const [f, setF] = useState({
     razon_social: '',
     nombre_fantasia: '',
@@ -175,12 +178,20 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
           </div>
           <div>
             <label className="label">Tipo de Pago</label>
-            <select className="input" value={f.tipo_pago} onChange={(e) => set('tipo_pago', e.target.value as TipoPago)}>
-              {TIPOS_PAGO.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            {/* El crédito solo lo asigna el ADMIN; el vendedor crea clientes de Contado. */}
+            {esAdmin ? (
+              <select className="input" value={f.tipo_pago} onChange={(e) => set('tipo_pago', e.target.value as TipoPago)}>
+                {TIPOS_PAGO.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : (
+              <input className="input bg-gray-100 text-gray-600" value="Contado" readOnly />
+            )}
           </div>
         </div>
-        {f.tipo_pago === 'Crédito' && (
+        {!esAdmin && (
+          <p className="text-[11px] text-gray-400">El crédito y su límite los asigna el administrador.</p>
+        )}
+        {esAdmin && f.tipo_pago === 'Crédito' && (
           <div>
             <label className="label">Límite de crédito ($)</label>
             <input className="input" type="number" inputMode="decimal" value={f.limite_credito} onChange={(e) => set('limite_credito', Number(e.target.value))} />

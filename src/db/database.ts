@@ -54,5 +54,12 @@ export async function seedSiVacia(): Promise<void> {
     await db.usuarios
       .filter((u) => u.creado_por === 'sistema' && u.debe_cambiar_clave)
       .modify({ debe_cambiar_clave: false });
+    // Agregar los usuarios de fábrica que falten (ej: nuevos roles en una
+    // versión posterior) sin tocar los que ya existen.
+    for (const seed of USUARIOS_SEED) {
+      if (!(await db.usuarios.get(seed.id))) {
+        await db.usuarios.add(seed);
+      }
+    }
   }
 }

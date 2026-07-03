@@ -96,6 +96,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { clearInterval(id); window.removeEventListener('visibilitychange', tocar); };
   }, [usuario]);
 
+  // MOTOR GLOBAL de sincronización automática mientras hay sesión:
+  //  - cada 5 minutos (no menos: cuidamos la cuota diaria del Apps Script), y
+  //  - cada vez que la app vuelve al frente (el usuario la abre) → datos frescos
+  //    en segundos, que es lo que se siente como "tiempo real".
+  // El candado interno de sincronizarTodo evita ejecuciones simultáneas.
+  useEffect(() => {
+    if (!usuario) return;
+    const id = setInterval(() => void dispararAutoSync(), 5 * 60 * 1000);
+    const alFrente = () => { if (document.visibilityState === 'visible') void dispararAutoSync(); };
+    document.addEventListener('visibilitychange', alFrente);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', alFrente); };
+  }, [usuario]);
+
   const login = useCallback(async (username: string, clave: string): Promise<Resultado> => {
     username = username.trim();
     if (!username || !clave) return { ok: false, error: 'Completa todos los campos' };

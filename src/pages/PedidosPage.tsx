@@ -12,7 +12,16 @@ import { leerSesion } from '../hooks/useSession';
 import { useAuth } from '../auth/AuthContext';
 import { toast } from '../components/Toast';
 import { eliminarPedido } from '../services/borrado';
-import type { Pedido } from '../types';
+import type { Pedido, EstadoPedido } from '../types';
+
+// Colores del badge de estado del pedido.
+const COLOR_ESTADO: Record<EstadoPedido, string> = {
+  'Pendiente': 'bg-gray-100 text-gray-600',
+  'Procesado': 'bg-blue-100 text-blue-700',
+  'En ruta': 'bg-amber-100 text-amber-700',
+  'Entregado': 'bg-green-100 text-green-700',
+  'Cancelado': 'bg-red-100 text-red-700',
+};
 
 type Tab = 'nuevo' | 'dia';
 
@@ -115,7 +124,10 @@ function PedidoCard({
           <div className="min-w-0">
             <p className="font-semibold truncate">{p.cliente_nombre}</p>
             <p className="text-xs text-gray-500">{p.lineas.length} producto(s) · entrega {fechaLegible(p.fecha_entrega)}</p>
-            {esAdmin && <p className="text-[11px] text-gray-400">{p.vendedor}</p>}
+            <p className="mt-1 flex items-center gap-1">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${COLOR_ESTADO[p.estado_pedido] ?? 'bg-gray-100 text-gray-600'}`}>{p.estado_pedido}</span>
+              {esAdmin && <span className="text-[11px] text-gray-400">{p.vendedor}</span>}
+            </p>
           </div>
           <div className="text-right shrink-0">
             <p className="font-bold text-green-600">{formatoMoneda(p.total_pedido)}</p>

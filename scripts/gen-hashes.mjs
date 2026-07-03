@@ -35,6 +35,8 @@ const USUARIOS = [
   ['Almacenista3', 'Almacenista 3', 'almacenista', '', 'Quetzal8B!L03', false],
   ['Almacenista4', 'Almacenista 4', 'almacenista', '', 'Relampago8B!L04', false],
   ['Almacenista5', 'Almacenista 5', 'almacenista', '', 'Sahara8B!L05', false],
+  ['Inventario1', 'Analista de Inventario 1', 'inventario', '', 'Tornado8B!I01', false],
+  ['Inventario2', 'Analista de Inventario 2', 'inventario', '', 'Universo8B!I02', false],
 ];
 
 const FECHA = '2026-01-01T00:00:00.000Z';

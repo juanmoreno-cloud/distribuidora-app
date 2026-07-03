@@ -14,4 +14,4 @@ export const TOKEN_DEFAULT = '';
 
 // Versión visible de la app (se muestra en el login y en Configuración).
 // Súbela en cada entrega: sirve para saber qué versión corre cada teléfono.
-export const APP_VERSION = 'v7';
+export const APP_VERSION = 'v8';

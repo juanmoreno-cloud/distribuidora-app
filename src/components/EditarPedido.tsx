@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { X, Save, Plus, Minus, Trash2, Loader2 } from 'lucide-react';
-import type { Pedido, LineaPedido, Producto } from '../types';
+import { ESTADOS_PEDIDO, type Pedido, type LineaPedido, type Producto, type EstadoPedido } from '../types';
 import { db } from '../db/database';
 import { formatoMoneda, aFechaInput } from '../utils/formatters';
 import { toast } from './Toast';
@@ -12,6 +12,7 @@ import ProductoModal from './ProductoModal';
 export default function EditarPedido({ pedido, onCerrar }: { pedido: Pedido; onCerrar: () => void }) {
   const [lineas, setLineas] = useState<LineaPedido[]>(pedido.lineas.map((l) => ({ ...l })));
   const [fechaEntrega, setFechaEntrega] = useState(aFechaInput(pedido.fecha_entrega));
+  const [estado, setEstado] = useState<EstadoPedido>(pedido.estado_pedido);
   const [notas, setNotas] = useState(pedido.notas);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -60,6 +61,8 @@ export default function EditarPedido({ pedido, onCerrar }: { pedido: Pedido; onC
         lineas,
         total_pedido: total,
         fecha_entrega: new Date(fechaEntrega + 'T12:00:00').toISOString(),
+        estado_pedido: estado,
+        entregado: estado === 'Entregado', // coherente con el checkbox de Despacho
         notas: notas.trim(),
         sincronizado: false, // se vuelve a subir a Sheets con los cambios
       });
@@ -83,9 +86,17 @@ export default function EditarPedido({ pedido, onCerrar }: { pedido: Pedido; onC
       </header>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto pb-36">
-        <div>
-          <label className="label">Fecha de entrega</label>
-          <input type="date" className="input" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Fecha de entrega</label>
+            <input type="date" className="input" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Estado</label>
+            <select className="input" value={estado} onChange={(e) => setEstado(e.target.value as EstadoPedido)}>
+              {ESTADOS_PEDIDO.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
         </div>
 
         {lineas.map((l) => (

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Search, MapPin, CloudOff, Trash2 } from 'lucide-react';
+import { Plus, Search, MapPin, CloudOff, Trash2, CreditCard, X } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ClienteForm from '../components/ClienteForm';
 import ConfirmModal from '../components/ConfirmModal';
 import { db } from '../db/database';
-import type { Cliente } from '../types';
+import { TIPOS_PAGO, type Cliente, type TipoPago } from '../types';
 import { useAuth } from '../auth/AuthContext';
 import { toast } from '../components/Toast';
 import { contarPedidosDeCliente, eliminarCliente, eliminarClienteConPedidos } from '../services/borrado';
@@ -17,6 +17,7 @@ export default function ClientesPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [aEliminar, setAEliminar] = useState<Cliente | null>(null);
+  const [aEditarCredito, setAEditarCredito] = useState<Cliente | null>(null);
   const [pedidosAsociados, setPedidosAsociados] = useState(0);
 
   // Solo clientes NO eliminados.
@@ -70,13 +71,15 @@ export default function ClientesPage() {
 
         <div className="space-y-2">
           {filtrados.map((c) => (
-            <ClienteCard key={c.id} cliente={c} esAdmin={esAdmin} onEliminar={() => pedirEliminar(c)} />
+            <ClienteCard key={c.id} cliente={c} esAdmin={esAdmin} onEliminar={() => pedirEliminar(c)} onCredito={() => setAEditarCredito(c)} />
           ))}
           {filtrados.length === 0 && <p className="text-center text-gray-400 py-8">No hay clientes que coincidan.</p>}
         </div>
       </div>
 
       {mostrarForm && <ClienteForm onCerrar={() => setMostrarForm(false)} />}
+
+      {aEditarCredito && <EditarCredito cliente={aEditarCredito} onCerrar={() => setAEditarCredito(null)} />}
 
       {aEliminar && (
         <ConfirmModal
@@ -103,7 +106,45 @@ export default function ClientesPage() {
   );
 }
 
-function ClienteCard({ cliente: c, esAdmin, onEliminar }: { cliente: Cliente; esAdmin: boolean; onEliminar: () => void }) {
+// Mini-modal (SOLO admin) para editar el tipo de pago y el límite de crédito
+// de un cliente existente. Con la sincronización, el cambio baja a los demás equipos.
+function EditarCredito({ cliente: c, onCerrar }: { cliente: Cliente; onCerrar: () => void }) {
+  const [tipoPago, setTipoPago] = useState<TipoPago>(c.tipo_pago);
+  const [limite, setLimite] = useState(String(c.limite_credito));
+
+  async function guardar() {
+    const lim = tipoPago === 'Crédito' ? Math.max(0, Number(limite) || 0) : 0;
+    await db.clientes.update(c.id, { tipo_pago: tipoPago, limite_credito: lim, sincronizado: false });
+    toast('Crédito actualizado ✓', 'success');
+    onCerrar();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={onCerrar}>
+      <div className="card w-full max-w-sm p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">Crédito de {c.nombre_fantasia || c.razon_social}</h3>
+          <button className="p-1 text-gray-500" onClick={onCerrar}><X size={18} /></button>
+        </div>
+        <div>
+          <label className="label">Tipo de pago</label>
+          <select className="input" value={tipoPago} onChange={(e) => setTipoPago(e.target.value as TipoPago)}>
+            {TIPOS_PAGO.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </div>
+        {tipoPago === 'Crédito' && (
+          <div>
+            <label className="label">Límite de crédito ($)</label>
+            <input className="input" type="number" inputMode="decimal" min="0" value={limite} onChange={(e) => setLimite(e.target.value)} />
+          </div>
+        )}
+        <button className="btn-success w-full" onClick={guardar}>Guardar</button>
+      </div>
+    </div>
+  );
+}
+
+function ClienteCard({ cliente: c, esAdmin, onEliminar, onCredito }: { cliente: Cliente; esAdmin: boolean; onEliminar: () => void; onCredito: () => void }) {
   return (
     <div className="card p-3">
       <div className="flex items-start justify-between gap-2">
@@ -122,11 +163,16 @@ function ClienteCard({ cliente: c, esAdmin, onEliminar }: { cliente: Cliente; es
           {c.latitud && <span className="flex items-center gap-1"><MapPin size={12} /> GPS</span>}
           <span>{c.sincronizado ? '🟢 Sincronizado' : '🟡 Pendiente'}</span>
         </div>
-        {/* Eliminar: SOLO admin */}
+        {/* Crédito y Eliminar: SOLO admin */}
         {esAdmin && (
-          <button className="text-red-500 flex items-center gap-1 text-xs font-medium p-1" onClick={onEliminar}>
-            <Trash2 size={15} /> Eliminar
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="text-marca flex items-center gap-1 text-xs font-medium p-1" onClick={onCredito}>
+              <CreditCard size={15} /> Crédito
+            </button>
+            <button className="text-red-500 flex items-center gap-1 text-xs font-medium p-1" onClick={onEliminar}>
+              <Trash2 size={15} /> Eliminar
+            </button>
+          </div>
         )}
       </div>
     </div>

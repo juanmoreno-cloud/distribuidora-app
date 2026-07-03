@@ -143,8 +143,20 @@ export async function syncDesdeSheets(): Promise<number> {
     if (!existe.sincronizado) continue;
 
     // Propagar el borrado del admin a este dispositivo.
-    if (borradoEnSheets && !existe.eliminado) {
-      await db.clientes.update(id, { eliminado: true, sincronizado: true });
+    if (borradoEnSheets) {
+      if (!existe.eliminado) {
+        await db.clientes.update(id, { eliminado: true, sincronizado: true });
+        cambios++;
+      }
+      continue;
+    }
+
+    // ACTUALIZACIÓN entre equipos: si la fila de Sheets difiere de la copia
+    // local (ej: el admin cambió el crédito), se toma la versión de Sheets.
+    // Se compara serializando ambos lados con el MISMO conversor (orden estable).
+    const candidato = filaACliente(r, id);
+    if (JSON.stringify(clienteAFila(candidato)) !== JSON.stringify(clienteAFila(existe)) || existe.eliminado) {
+      await db.clientes.put({ ...candidato, fotos_soportes: existe.fotos_soportes, eliminado: false });
       cambios++;
     }
   }
@@ -192,8 +204,21 @@ export async function syncPedidosDesdeSheets(): Promise<number> {
 
     if (!existe.sincronizado) continue; // cambios locales pendientes: la app gana
 
-    if (borradoEnSheets && !existe.eliminado) {
-      await db.pedidos.update(id, { eliminado: true, sincronizado: true });
+    if (borradoEnSheets) {
+      if (!existe.eliminado) {
+        await db.pedidos.update(id, { eliminado: true, sincronizado: true });
+        cambios++;
+      }
+      continue;
+    }
+
+    // ACTUALIZACIÓN entre equipos: ediciones del admin (líneas, cantidades,
+    // estado), entregas del despachador, etc. Se toma la versión de Sheets si
+    // difiere de la copia local (comparación con el mismo conversor).
+    const candidato = filaAPedido(r, id);
+    if (!candidato) continue; // fila corrupta: se ignora
+    if (JSON.stringify(pedidoAFila(candidato)) !== JSON.stringify(pedidoAFila(existe)) || existe.eliminado) {
+      await db.pedidos.put({ ...candidato, eliminado: false });
       cambios++;
     }
   }

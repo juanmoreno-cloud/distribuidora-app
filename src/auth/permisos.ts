@@ -18,13 +18,20 @@ export const PERMISOS: Record<Rol, PermisoRol> = {
   },
   despachador: {
     rutaInicial: '/despacho',
-    rutasPermitidas: ['/despacho'],
-    tabs: ['despacho'],
+    // Puede consultar la carga del camión (solo lectura) además de despachar.
+    rutasPermitidas: ['/despacho', '/carga'],
+    tabs: ['carga', 'despacho'],
   },
   almacenista: {
     rutaInicial: '/carga',
     rutasPermitidas: ['/carga'],
     tabs: ['carga'],
+  },
+  inventario: {
+    // Analista de Inventario: vive en el catálogo (productos, precios y stock).
+    rutaInicial: '/catalogo',
+    rutasPermitidas: ['/catalogo'],
+    tabs: [],
   },
   admin: {
     rutaInicial: '/',

@@ -45,15 +45,12 @@ export function useSync() {
     }
   }, []);
 
-  // Auto-sync: al volver el internet y cada 5 minutos.
+  // Auto-sync al volver el internet. (El intervalo periódico y el sync al
+  // traer la app al frente viven en AuthContext, que siempre está montado.)
   useEffect(() => {
     const alVolver = () => sincronizar(true);
     window.addEventListener('online', alVolver);
-    const intervalo = setInterval(() => sincronizar(true), 5 * 60 * 1000);
-    return () => {
-      window.removeEventListener('online', alVolver);
-      clearInterval(intervalo);
-    };
+    return () => window.removeEventListener('online', alVolver);
   }, [sincronizar]);
 
   return { pendientes, sincronizando, sincronizar };
