@@ -50,11 +50,12 @@ export default function DespachoPage() {
       entregado,
       estado_pedido: entregado ? 'Entregado' : 'Pendiente',
       sincronizado: false,
+      actualizado_en: new Date().toISOString(),
     });
   }
 
   async function guardarObs(pedido: Pedido, obs: string) {
-    await db.pedidos.update(pedido.id, { obs_entrega: obs, sincronizado: false });
+    await db.pedidos.update(pedido.id, { obs_entrega: obs, sincronizado: false, actualizado_en: new Date().toISOString() });
   }
 
   function descargarPdf() {

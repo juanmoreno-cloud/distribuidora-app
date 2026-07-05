@@ -29,8 +29,8 @@ var TOKEN = 'VUWiSDHX0PiDq0uDGbz7LnWw';
 
 // Hojas y sus encabezados (se crean solas si no existen).
 var HOJAS = {
-  Clientes: ['id','razon_social','nombre_fantasia','rif','telefono','direccion','tipo_cliente','zona','estado','latitud','longitud','contacto_nombre','vendedor_asignado','ruta','tipo_pago','limite_credito','observaciones','fecha_registro'],
-  Pedidos: ['id','fecha_pedido','fecha_entrega','vendedor','ruta','cliente_id','cliente_nombre','tipo_pago','estado_pedido','total_pedido','notas','entregado','obs_entrega','lineas_json'],
+  Clientes: ['id','razon_social','nombre_fantasia','rif','telefono','direccion','tipo_cliente','zona','estado','latitud','longitud','contacto_nombre','vendedor_asignado','ruta','tipo_pago','limite_credito','observaciones','fecha_registro','actualizado_en'],
+  Pedidos: ['id','fecha_pedido','fecha_entrega','vendedor','ruta','cliente_id','cliente_nombre','tipo_pago','estado_pedido','total_pedido','notas','entregado','obs_entrega','lineas_json','actualizado_en'],
   Catalogo: ['codigo','descripcion','grupo','sub_grupo','precio_unitario','unidad','stock'],
 };
 
@@ -84,20 +84,31 @@ function hoja_(nombre) {
 }
 
 // Inserta o actualiza filas usando la columna "id"/"codigo" como llave.
-// (La app siempre gana: al subir se sobrescribe la fila existente.)
+// (La app siempre gana al subir, EXCEPTO si la fila ya en Sheets tiene un
+// actualizado_en más reciente: eso evita que un equipo con datos viejos pise
+// la edición más reciente de otro equipo.)
 function upsert_(nombre, objetos) {
   var sh = hoja_(nombre);
   var cols = HOJAS[nombre];
   var llave = cols[0]; // id (o codigo)
+  var indexActualizadoEn = cols.indexOf('actualizado_en');
   var datos = sh.getDataRange().getValues();
   var indexLlave = {};
   for (var r = 1; r < datos.length; r++) indexLlave[String(datos[r][0])] = r + 1; // fila real
 
-  var creados = 0, actualizados = 0;
+  var creados = 0, actualizados = 0, rechazados = 0;
   objetos.forEach(function (obj) {
     var fila = cols.map(function (c) { return obj[c] != null ? obj[c] : ''; });
     var clave = String(obj[llave]);
     if (indexLlave[clave]) {
+      var filaExistente = datos[indexLlave[clave] - 1];
+      var actualizadoEnEntrante = indexActualizadoEn > -1 ? String(obj['actualizado_en'] || '') : '';
+      var actualizadoEnActual = indexActualizadoEn > -1 ? String(filaExistente[indexActualizadoEn] || '') : '';
+      // Comparación de string sirve para fechas ISO 8601 (orden lexicográfico == cronológico).
+      if (actualizadoEnEntrante && actualizadoEnActual && actualizadoEnEntrante <= actualizadoEnActual) {
+        rechazados++;
+        return;
+      }
       sh.getRange(indexLlave[clave], 1, 1, cols.length).setValues([fila]);
       actualizados++;
     } else {
@@ -105,7 +116,7 @@ function upsert_(nombre, objetos) {
       creados++;
     }
   });
-  return { ok: true, creados: creados, actualizados: actualizados };
+  return { ok: true, creados: creados, actualizados: actualizados, rechazados: rechazados };
 }
 
 function leer_(nombre) {

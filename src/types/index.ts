@@ -93,6 +93,7 @@ export interface Cliente {
   observaciones: string;
   fecha_registro: string; // ISO
   sincronizado: boolean;
+  actualizado_en?: string; // ISO de la última modificación local; resuelve conflictos de sincronización (gana el más reciente)
   fotos_soportes: string[]; // base64 (offline; luego se suben)
   eliminado?: boolean; // borrado suave (solo admin); se oculta de las vistas
 }
@@ -132,6 +133,7 @@ export interface Pedido {
   total_pedido: number;
   notas: string;
   sincronizado: boolean;
+  actualizado_en?: string; // ISO de la última modificación local; resuelve conflictos de sincronización (gana el más reciente)
   sheet_row_id?: number;
   // Campos de despacho (se llenan en el modulo de Despacho)
   entregado?: boolean;

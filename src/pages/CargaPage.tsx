@@ -87,7 +87,7 @@ export default function CargaPage() {
         l.producto_codigo === codigo ? { ...l, cantidad, subtotal: cantidad * l.precio_unitario } : l);
     }
     const total = lineas.reduce((s, l) => s + l.subtotal, 0);
-    await db.pedidos.update(pedidoId, { lineas, total_pedido: total, sincronizado: false });
+    await db.pedidos.update(pedidoId, { lineas, total_pedido: total, sincronizado: false, actualizado_en: new Date().toISOString() });
     toast('Pedido actualizado ✓', 'success');
   }
 

@@ -29,7 +29,7 @@ export async function contarPedidosDeCliente(clienteId: string): Promise<number>
 export async function eliminarCliente(cliente: Cliente, usuario: Usuario | null): Promise<void> {
   exigirAdmin(usuario);
   if (cliente.sincronizado) {
-    await db.clientes.update(cliente.id, { eliminado: true, sincronizado: false });
+    await db.clientes.update(cliente.id, { eliminado: true, sincronizado: false, actualizado_en: new Date().toISOString() });
   } else {
     await db.clientes.delete(cliente.id);
   }
@@ -39,7 +39,7 @@ export async function eliminarCliente(cliente: Cliente, usuario: Usuario | null)
 export async function eliminarPedido(pedido: Pedido, usuario: Usuario | null): Promise<void> {
   exigirAdmin(usuario);
   if (pedido.sincronizado) {
-    await db.pedidos.update(pedido.id, { eliminado: true, sincronizado: false });
+    await db.pedidos.update(pedido.id, { eliminado: true, sincronizado: false, actualizado_en: new Date().toISOString() });
   } else {
     await db.pedidos.delete(pedido.id);
   }
@@ -59,13 +59,13 @@ export async function eliminarClienteConPedidos(cliente: Cliente, usuario: Usuar
 // ---- Papelera ----
 export async function restaurarCliente(cliente: Cliente, usuario: Usuario | null): Promise<void> {
   exigirAdmin(usuario);
-  await db.clientes.update(cliente.id, { eliminado: false, sincronizado: false });
+  await db.clientes.update(cliente.id, { eliminado: false, sincronizado: false, actualizado_en: new Date().toISOString() });
   log(usuario, 'restauró cliente', cliente.id);
 }
 
 export async function restaurarPedido(pedido: Pedido, usuario: Usuario | null): Promise<void> {
   exigirAdmin(usuario);
-  await db.pedidos.update(pedido.id, { eliminado: false, sincronizado: false });
+  await db.pedidos.update(pedido.id, { eliminado: false, sincronizado: false, actualizado_en: new Date().toISOString() });
   log(usuario, 'restauró pedido', pedido.id);
 }
 

@@ -23,6 +23,27 @@ function normalizarEstadoPedido(v: unknown): EstadoPedido {
   return (ESTADOS_PEDIDO.find((e) => e.toLowerCase() === s) as EstadoPedido) ?? 'Pendiente';
 }
 
+// C2: decide si el candidato que baja de Sheets debe pisar la copia local,
+// usando "gana el más reciente" (actualizado_en) en vez de solo comparar
+// contenido. Evita que la bajada pise una edición local recién subida cuando
+// otro equipo sincronizó con datos más viejos. Si a alguno le falta
+// actualizado_en (registros de antes de este cambio), cae al respaldo por
+// firma() para no romper compatibilidad con datos existentes.
+function candidatoEsMasReciente(
+  candidatoActualizadoEn: string | undefined,
+  existeActualizadoEn: string | undefined,
+  firmaCandidato: string,
+  firmaExiste: string,
+): boolean {
+  const tCandidato = candidatoActualizadoEn ? new Date(candidatoActualizadoEn).getTime() : NaN;
+  const tExiste = existeActualizadoEn ? new Date(existeActualizadoEn).getTime() : NaN;
+  if (candidatoActualizadoEn && existeActualizadoEn && !isNaN(tCandidato) && !isNaN(tExiste)) {
+    return tCandidato > tExiste;
+  }
+  // Fallback: alguno no tiene actualizado_en válido, comparar por firma.
+  return firmaCandidato !== firmaExiste;
+}
+
 // ====================================================================
 // Sincronización con Google Sheets a través de un Apps Script Web App.
 // No usa llaves secretas en el teléfono: solo la URL pública del Web App.
@@ -198,11 +219,16 @@ export async function syncDesdeSheets(): Promise<number> {
       continue;
     }
 
-    // ACTUALIZACIÓN entre equipos: si la fila de Sheets difiere de la copia
-    // local (ej: el admin cambió el crédito), se toma la versión de Sheets.
-    // Se compara serializando ambos lados con el MISMO conversor (orden estable).
+    // ACTUALIZACIÓN entre equipos: si la fila de Sheets es más reciente que la
+    // copia local (ej: el admin cambió el crédito desde otro equipo), se toma
+    // la versión de Sheets. "Gana el más reciente" por actualizado_en; si a
+    // alguno le falta, se usa firma() como respaldo (compatibilidad).
     const candidato = filaACliente(r, id);
-    if (firma(clienteAFila(candidato)) !== firma(clienteAFila(existe)) || existe.eliminado) {
+    const masReciente = candidatoEsMasReciente(
+      candidato.actualizado_en, existe.actualizado_en,
+      firma(clienteAFila(candidato)), firma(clienteAFila(existe)),
+    );
+    if (masReciente || existe.eliminado) {
       await db.clientes.put({ ...candidato, fotos_soportes: existe.fotos_soportes, eliminado: false });
       cambios++;
     }
@@ -260,11 +286,18 @@ export async function syncPedidosDesdeSheets(): Promise<number> {
     }
 
     // ACTUALIZACIÓN entre equipos: ediciones del admin (líneas, cantidades,
-    // estado), entregas del despachador, etc. Se toma la versión de Sheets si
-    // difiere de la copia local (comparación con el mismo conversor).
+    // estado), entregas del despachador, etc. Se toma la versión de Sheets
+    // solo si es más reciente que la copia local ("gana el más reciente" por
+    // actualizado_en; si a alguno le falta, respaldo por firma()) — evita que
+    // la bajada pise una edición local recién subida (ej: chofer marca
+    // "Entregado" casi al mismo tiempo que el admin edita desde otro equipo).
     const candidato = filaAPedido(r, id);
     if (!candidato) continue; // fila corrupta: se ignora
-    if (firma(pedidoAFila(candidato)) !== firma(pedidoAFila(existe)) || existe.eliminado) {
+    const masReciente = candidatoEsMasReciente(
+      candidato.actualizado_en, existe.actualizado_en,
+      firma(pedidoAFila(candidato)), firma(pedidoAFila(existe)),
+    );
+    if (masReciente || existe.eliminado) {
       await db.pedidos.put({ ...candidato, eliminado: false });
       cambios++;
     }
@@ -317,7 +350,7 @@ function clienteAFila(c: Cliente) {
     estado: c.eliminado ? 'ELIMINADO' : c.estado, latitud: c.latitud ?? '', longitud: c.longitud ?? '',
     contacto_nombre: c.contacto_nombre, vendedor_asignado: c.vendedor_asignado, ruta: c.ruta,
     tipo_pago: c.tipo_pago, limite_credito: c.limite_credito, observaciones: c.observaciones,
-    fecha_registro: c.fecha_registro,
+    fecha_registro: c.fecha_registro, actualizado_en: c.actualizado_en ?? '',
   };
 }
 
@@ -337,7 +370,7 @@ function filaACliente(r: any, id: string): Cliente {
     limite_credito: Number(r.limite_credito) || 0,
     observaciones: String(r.observaciones ?? ''),
     fecha_registro: String(r.fecha_registro ?? new Date().toISOString()),
-    sincronizado: true, fotos_soportes: [],
+    sincronizado: true, actualizado_en: String(r.actualizado_en ?? ''), fotos_soportes: [],
   };
 }
 
@@ -347,7 +380,7 @@ function pedidoAFila(p: Pedido) {
     ruta: p.ruta, cliente_id: p.cliente_id, cliente_nombre: p.cliente_nombre, tipo_pago: p.tipo_pago,
     estado_pedido: p.eliminado ? 'eliminado' : p.estado_pedido, total_pedido: p.total_pedido, notas: p.notas,
     entregado: p.entregado ? 'SÍ' : '', obs_entrega: p.obs_entrega ?? '',
-    lineas_json: JSON.stringify(p.lineas),
+    lineas_json: JSON.stringify(p.lineas), actualizado_en: p.actualizado_en ?? '',
   };
 }
 
@@ -379,5 +412,6 @@ function filaAPedido(r: any, id: string): Pedido | null {
     sincronizado: true, // viene de Sheets: ya está allá
     entregado: String(r.entregado ?? '').toUpperCase().startsWith('S'),
     obs_entrega: String(r.obs_entrega ?? ''),
+    actualizado_en: String(r.actualizado_en ?? ''),
   };
 }

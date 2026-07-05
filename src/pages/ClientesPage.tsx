@@ -114,7 +114,7 @@ function EditarCredito({ cliente: c, onCerrar }: { cliente: Cliente; onCerrar: (
 
   async function guardar() {
     const lim = tipoPago === 'Crédito' ? Math.max(0, Number(limite) || 0) : 0;
-    await db.clientes.update(c.id, { tipo_pago: tipoPago, limite_credito: lim, sincronizado: false });
+    await db.clientes.update(c.id, { tipo_pago: tipoPago, limite_credito: lim, sincronizado: false, actualizado_en: new Date().toISOString() });
     toast('Crédito actualizado ✓', 'success');
     onCerrar();
   }

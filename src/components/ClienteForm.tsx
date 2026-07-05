@@ -110,6 +110,7 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
         longitud: lng,
         fecha_registro: new Date().toISOString(),
         sincronizado: false, // se subirá a Google Sheets cuando haya internet
+        actualizado_en: new Date().toISOString(),
         fotos_soportes: fotos,
       };
 

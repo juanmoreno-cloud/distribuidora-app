@@ -105,6 +105,7 @@ export default function NuevoPedido() {
       total_pedido: total,
       notas: notas.trim(),
       sincronizado: false,
+      actualizado_en: new Date().toISOString(),
     };
 
     try {

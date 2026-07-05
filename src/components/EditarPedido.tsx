@@ -65,6 +65,7 @@ export default function EditarPedido({ pedido, onCerrar }: { pedido: Pedido; onC
         entregado: estado === 'Entregado', // coherente con el checkbox de Despacho
         notas: notas.trim(),
         sincronizado: false, // se vuelve a subir a Sheets con los cambios
+        actualizado_en: new Date().toISOString(),
       });
       toast('Pedido actualizado ✓', 'success');
       onCerrar();
