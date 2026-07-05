@@ -7,3 +7,4 @@ dist-ssr
 .env.*
 !.env.example
 dev-dist
+graphify-out

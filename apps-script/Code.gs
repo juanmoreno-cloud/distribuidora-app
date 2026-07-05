@@ -23,7 +23,9 @@
  */
 
 var SHEET_ID = '1GwYPKp0KaKZaLplHEV2U-wK6p2BSNHt4v2mBkDbDuIw';
-var TOKEN = ''; // si lo dejas vacío, no se exige token
+// Debe ser IGUAL a TOKEN_DEFAULT en src/config.ts. Cierra el acceso abierto a
+// la hoja: quien no envíe este token recibe "Token inválido".
+var TOKEN = 'VUWiSDHX0PiDq0uDGbz7LnWw';
 
 // Hojas y sus encabezados (se crean solas si no existen).
 var HOJAS = {

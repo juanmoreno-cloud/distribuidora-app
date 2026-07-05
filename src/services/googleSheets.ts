@@ -1,6 +1,27 @@
 import { db } from '../db/database';
-import type { Cliente, Pedido } from '../types';
+import { ESTADOS_PEDIDO, type Cliente, type Pedido, type EstadoPedido } from '../types';
 import { WEBAPP_URL_DEFAULT, TOKEN_DEFAULT } from '../config';
+
+// C6: firma normalizada para comparar dos "filas" ignorando diferencias
+// cosméticas (vacío vs undefined vs null se tratan igual). Evita el "re-sync
+// perpetuo" que reescribía registros sin cambio real y gastaba cuota de Google.
+function firma(fila: Record<string, unknown>): string {
+  const norm: Record<string, string> = {};
+  for (const k of Object.keys(fila).sort()) {
+    const v = fila[k];
+    norm[k] = v === null || v === undefined || v === '' ? '' : String(v);
+  }
+  return JSON.stringify(norm);
+}
+
+// C5: un estado que venga de Sheets escrito a mano ("entregado", "En Ruta")
+// se mapea al valor canónico de la lista; si no coincide con ninguno, "Pendiente".
+// Así los filtros de crédito/despacho (que comparan contra el valor exacto) no
+// se rompen y no se dispara el re-sync perpetuo por diferencia de mayúsculas.
+function normalizarEstadoPedido(v: unknown): EstadoPedido {
+  const s = String(v ?? '').trim().toLowerCase();
+  return (ESTADOS_PEDIDO.find((e) => e.toLowerCase() === s) as EstadoPedido) ?? 'Pendiente';
+}
 
 // ====================================================================
 // Sincronización con Google Sheets a través de un Apps Script Web App.
@@ -37,13 +58,39 @@ async function llamar(action: string, payload?: unknown): Promise<any> {
   const { webappUrl, token } = await leerConfigSync();
   if (!webappUrl) throw new Error('Falta configurar la URL del Web App (pantalla Configuración).');
 
-  const resp = await fetch(webappUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, token, payload }),
-  });
+  // R1: timeout. En redes inestables un fetch puede quedar colgado sin resolver
+  // ni fallar; eso dejaría el candado de sincronización trabado toda la sesión.
+  // Abortamos a los 20s para que siempre resuelva (y el candado se libere).
+  const controlador = new AbortController();
+  const alarma = setTimeout(() => controlador.abort(), 20000);
+  let resp: Response;
+  try {
+    resp = await fetch(webappUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, token, payload }),
+      signal: controlador.signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      throw new Error('La conexión tardó demasiado. Revisa tu internet e intenta de nuevo.');
+    }
+    throw new Error('No hay conexión con el servidor. Revisa tu internet.');
+  } finally {
+    clearTimeout(alarma);
+  }
   if (!resp.ok) throw new Error('El servidor respondió ' + resp.status);
-  const data = await resp.json();
+
+  // R6: cuando Google Apps Script excede su cuota suele responder HTTP 200 con
+  // una PÁGINA HTML (no JSON). Parsearla da un error opaco ("Unexpected token <");
+  // lo detectamos y damos un mensaje entendible.
+  const texto = await resp.text();
+  let data: any;
+  try {
+    data = JSON.parse(texto);
+  } catch {
+    throw new Error('Google no respondió correctamente (puede ser un límite temporal). Intenta de nuevo en unos minutos.');
+  }
   if (!data.ok) throw new Error(data.error || 'Error desconocido del Web App');
   return data;
 }
@@ -155,7 +202,7 @@ export async function syncDesdeSheets(): Promise<number> {
     // local (ej: el admin cambió el crédito), se toma la versión de Sheets.
     // Se compara serializando ambos lados con el MISMO conversor (orden estable).
     const candidato = filaACliente(r, id);
-    if (JSON.stringify(clienteAFila(candidato)) !== JSON.stringify(clienteAFila(existe)) || existe.eliminado) {
+    if (firma(clienteAFila(candidato)) !== firma(clienteAFila(existe)) || existe.eliminado) {
       await db.clientes.put({ ...candidato, fotos_soportes: existe.fotos_soportes, eliminado: false });
       cambios++;
     }
@@ -217,7 +264,7 @@ export async function syncPedidosDesdeSheets(): Promise<number> {
     // difiere de la copia local (comparación con el mismo conversor).
     const candidato = filaAPedido(r, id);
     if (!candidato) continue; // fila corrupta: se ignora
-    if (JSON.stringify(pedidoAFila(candidato)) !== JSON.stringify(pedidoAFila(existe)) || existe.eliminado) {
+    if (firma(pedidoAFila(candidato)) !== firma(pedidoAFila(existe)) || existe.eliminado) {
       await db.pedidos.put({ ...candidato, eliminado: false });
       cambios++;
     }
@@ -325,7 +372,7 @@ function filaAPedido(r: any, id: string): Pedido | null {
     cliente_id: String(r.cliente_id ?? ''),
     cliente_nombre: String(r.cliente_nombre ?? ''),
     tipo_pago: (r.tipo_pago || 'Contado') as Pedido['tipo_pago'],
-    estado_pedido: (r.estado_pedido || 'Pendiente') as Pedido['estado_pedido'],
+    estado_pedido: normalizarEstadoPedido(r.estado_pedido),
     lineas,
     total_pedido: Number(r.total_pedido) || 0,
     notas: String(r.notas ?? ''),

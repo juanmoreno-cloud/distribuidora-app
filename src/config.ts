@@ -9,9 +9,11 @@
 export const WEBAPP_URL_DEFAULT =
   'https://script.google.com/macros/s/AKfycby5MxOKXyo43Snmu_ESLI-8HxdYJZLkyky1s1cb4LdXZtPfcwhDlRJyMBgQA5EQ9SNh/exec';
 
-// Token del Apps Script (vacío si no configuraste uno en el script).
-export const TOKEN_DEFAULT = '';
+// Token del Apps Script: eleva la barrera de "cualquiera con la URL" a "alguien
+// que además conoce este token". DEBE ser IGUAL a la variable TOKEN en Code.gs.
+// Si lo cambias aquí, cámbialo también en el script y redespliega.
+export const TOKEN_DEFAULT = 'VUWiSDHX0PiDq0uDGbz7LnWw';
 
 // Versión visible de la app (se muestra en el login y en Configuración).
 // Súbela en cada entrega: sirve para saber qué versión corre cada teléfono.
-export const APP_VERSION = 'v8';
+export const APP_VERSION = 'v9';
