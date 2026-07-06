@@ -1,11 +1,20 @@
 // Validacion de RIF venezolano. Acepta:
 //  - J-12345678-9  (con digito verificador)
 //  - J-12345678    (sin digito verificador)
-//  - SIN RIF       (cliente sin RIF aun)
-const RIF_REGEX = /^(J|V|E|G)-(\d{7,8})-(\d{1})$|^(J|V|E|G)-(\d{7,8})$|^SIN RIF$/;
+//  - SIN IDENTIFICACION (cliente sin RIF aun)
+const RIF_REGEX = /^(J|V|E|G)-(\d{7,8})-(\d{1})$|^(J|V|E|G)-(\d{7,8})$|^SIN IDENTIFICACION$/;
 
 export function esRifValido(rif: string): boolean {
   return RIF_REGEX.test((rif || '').trim().toUpperCase());
+}
+
+// Validacion de Cedula de Identidad venezolana: V-12345678 o E-12345678
+// (persona natural o extranjero, sin digito verificador). Acepta tambien
+// el literal SIN IDENTIFICACION para clientes sin documento aun.
+const CEDULA_REGEX = /^(V|E)-(\d{6,8})$|^SIN IDENTIFICACION$/;
+
+export function esCedulaValida(cedula: string): boolean {
+  return CEDULA_REGEX.test((cedula || '').trim().toUpperCase());
 }
 
 // Telefono: solo digitos, guiones, espacios y +. Minimo 7 digitos.

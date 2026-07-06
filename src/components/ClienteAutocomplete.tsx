@@ -32,6 +32,7 @@ export default function ClienteAutocomplete({
         <div className="min-w-0">
           <p className="font-semibold truncate">{seleccionado.nombre_fantasia || seleccionado.razon_social}</p>
           <p className="text-xs text-gray-500">{seleccionado.rif} · {seleccionado.tipo_pago}</p>
+          {seleccionado.contacto_telefono && <p className="text-xs text-gray-500">📞 {seleccionado.contacto_telefono}</p>}
           {seleccionado.direccion && <p className="text-xs text-gray-500 truncate">{seleccionado.direccion}</p>}
         </div>
         <button className="btn-ghost !min-h-[36px] !px-3 text-sm" onClick={() => { onSeleccionar(null); setQ(''); }}>

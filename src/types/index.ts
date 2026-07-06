@@ -19,24 +19,11 @@ export const TIPOS_CLIENTE = [
 export type TipoCliente = (typeof TIPOS_CLIENTE)[number];
 
 export const ZONAS = [
-  '23 de Enero',
-  'Alta Vista',
-  'El Cementerio',
-  'La Vega',
-  'El Rosal',
-  'Chacao',
-  'Los Ruices',
-  'Sabana Grande',
-  'Plaza Venezuela',
-  'Petare',
-  'Los Dos Caminos',
-  'Boleíta',
-  'La Castellana',
-  'San Bernardino',
   'Catia',
   'El Paraíso',
-  'Antímano',
-  'Otro',
+  'Quinta Crespo',
+  '23 de Enero',
+  'San Bernardino',
 ] as const;
 export type Zona = (typeof ZONAS)[number];
 
@@ -54,9 +41,12 @@ export const VENDEDORES = [
 export type Vendedor = (typeof VENDEDORES)[number];
 
 export const RUTAS = [
-  'Ruta 1 (Zona Oeste/Norte)',
-  'Ruta 2 (Zona Centro/Sur)',
-  'Ruta 3 (Zona Este)',
+  'Catia 1',
+  'Catia 2',
+  'El Paraíso 1',
+  'El Paraíso 2',
+  'Quinta Crespo 1',
+  'Quinta Crespo 2',
 ] as const;
 export type Ruta = (typeof RUTAS)[number];
 
@@ -78,6 +68,7 @@ export interface Cliente {
   razon_social: string;
   nombre_fantasia: string;
   rif: string;
+  tipo_documento?: 'RIF' | 'Cedula'; // tipo de documento del RIF/cédula; opcional para compatibilidad con clientes previos
   telefono: string;
   direccion: string;
   tipo_cliente: TipoCliente | '';
@@ -86,6 +77,7 @@ export interface Cliente {
   latitud?: number;
   longitud?: number;
   contacto_nombre: string;
+  contacto_telefono?: string; // teléfono del dueño/contacto, distinto al teléfono del negocio
   vendedor_asignado: string; // nombre del vendedor logueado (o dato heredado)
   ruta: Ruta | '';
   tipo_pago: TipoPago;

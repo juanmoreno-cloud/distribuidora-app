@@ -29,7 +29,7 @@ var TOKEN = 'VUWiSDHX0PiDq0uDGbz7LnWw';
 
 // Hojas y sus encabezados (se crean solas si no existen).
 var HOJAS = {
-  Clientes: ['id','razon_social','nombre_fantasia','rif','telefono','direccion','tipo_cliente','zona','estado','latitud','longitud','contacto_nombre','vendedor_asignado','ruta','tipo_pago','limite_credito','observaciones','fecha_registro','actualizado_en'],
+  Clientes: ['id','razon_social','nombre_fantasia','rif','telefono','direccion','tipo_cliente','zona','estado','latitud','longitud','contacto_nombre','vendedor_asignado','ruta','tipo_pago','limite_credito','observaciones','fecha_registro','actualizado_en','tipo_documento','contacto_telefono'],
   Pedidos: ['id','fecha_pedido','fecha_entrega','vendedor','ruta','cliente_id','cliente_nombre','tipo_pago','estado_pedido','total_pedido','notas','entregado','obs_entrega','lineas_json','actualizado_en'],
   Catalogo: ['codigo','descripcion','grupo','sub_grupo','precio_unitario','unidad','stock'],
 };

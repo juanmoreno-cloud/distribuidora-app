@@ -49,7 +49,7 @@ export default function ClientesPage() {
         titulo="Clientes"
         accion={
           <button className="btn-primary !min-h-[40px] text-sm" onClick={() => setMostrarForm(true)}>
-            <Plus size={18} /> Nuevo
+            <Plus size={18} /> Nuevo Cliente
           </button>
         }
       />
@@ -152,6 +152,8 @@ function ClienteCard({ cliente: c, esAdmin, onEliminar, onCredito }: { cliente: 
           <p className="font-semibold truncate">{c.nombre_fantasia || c.razon_social}</p>
           <p className="text-xs text-gray-500">{c.rif} · {c.tipo_cliente || 'Sin tipo'}</p>
           {c.direccion && <p className="text-xs text-gray-500 truncate">{c.direccion}</p>}
+          {c.contacto_nombre && <p className="text-xs text-gray-500">👤 {c.contacto_nombre}{c.contacto_telefono ? ` · ${c.contacto_telefono}` : ''}</p>}
+          {c.telefono && <p className="text-xs text-gray-500">📞 {c.telefono} (negocio)</p>}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className={`text-[10px] px-2 py-0.5 rounded-full ${badgeEstado(c.estado)}`}>{c.estado}</span>

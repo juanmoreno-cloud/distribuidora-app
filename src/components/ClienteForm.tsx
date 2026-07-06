@@ -7,7 +7,7 @@ import {
 import { db } from '../db/database';
 import { obtenerUbicacion } from '../services/geolocation';
 import { archivoABase64 } from '../utils/imagenes';
-import { esRifValido, esTelefonoValido } from '../utils/validators';
+import { esRifValido, esCedulaValida, esTelefonoValido } from '../utils/validators';
 import { uuid } from '../utils/uuid';
 import { toast } from './Toast';
 import { leerSesion } from '../hooks/useSession';
@@ -21,6 +21,7 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
   const [f, setF] = useState({
     razon_social: '',
     nombre_fantasia: '',
+    tipo_documento: 'RIF' as 'RIF' | 'Cedula',
     rif: '',
     telefono: '',
     direccion: '',
@@ -30,6 +31,7 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
     tipo_pago: 'Contado' as TipoPago,
     limite_credito: 0,
     contacto_nombre: '',
+    contacto_telefono: '',
     observaciones: '',
     vendedor_asignado: sesion?.vendedor ?? '', // autocompletado con el usuario logueado
     ruta: (sesion?.ruta ?? '') as Ruta | '',
@@ -74,26 +76,33 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
       toast('Escribe al menos la razón social o el nombre.', 'error');
       return;
     }
-    const rif = f.rif.trim().toUpperCase() || 'SIN RIF';
-    if (!esRifValido(rif)) {
-      toast('RIF inválido. Ej: J-12345678-9 (o escribe SIN RIF).', 'error');
+    const rif = f.rif.trim().toUpperCase() || 'SIN IDENTIFICACION';
+    const documentoValido = f.tipo_documento === 'Cedula' ? esCedulaValida(rif) : esRifValido(rif);
+    if (!documentoValido) {
+      const ejemplo = f.tipo_documento === 'Cedula' ? 'V-12345678' : 'J-12345678-9';
+      toast(`${f.tipo_documento === 'Cedula' ? 'Cédula' : 'RIF'} inválido. Ej: ${ejemplo} (o escribe SIN IDENTIFICACION).`, 'error');
       return;
     }
     if (f.telefono.trim() && !esTelefonoValido(f.telefono)) {
       toast('Teléfono inválido (mínimo 7 dígitos).', 'error');
       return;
     }
+    if (f.contacto_telefono.trim() && !esTelefonoValido(f.contacto_telefono)) {
+      toast('Teléfono de contacto inválido (mínimo 7 dígitos).', 'error');
+      return;
+    }
 
     setGuardando(true);
     try {
       // id: usa el RIF si es válido y único; si no, genera uno.
-      let id = rif !== 'SIN RIF' ? rif : `cli-${uuid()}`;
+      let id = rif !== 'SIN IDENTIFICACION' ? rif : `cli-${uuid()}`;
       if (await db.clientes.get(id)) id = `cli-${uuid()}`;
 
       const cliente: Cliente = {
         id,
         razon_social: f.razon_social.trim(),
         nombre_fantasia: f.nombre_fantasia.trim() || f.razon_social.trim(),
+        tipo_documento: f.tipo_documento,
         rif,
         telefono: f.telefono.trim(),
         direccion: f.direccion.trim(),
@@ -103,6 +112,7 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
         tipo_pago: f.tipo_pago,
         limite_credito: f.tipo_pago === 'Crédito' ? Number(f.limite_credito) || 0 : 0,
         contacto_nombre: f.contacto_nombre.trim(),
+        contacto_telefono: f.contacto_telefono.trim(),
         observaciones: f.observaciones.trim(),
         vendedor_asignado: f.vendedor_asignado,
         ruta: f.ruta,
@@ -140,10 +150,25 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
           <label className="label">Nombre Fantasía</label>
           <input className="input" value={f.nombre_fantasia} onChange={(e) => set('nombre_fantasia', e.target.value)} placeholder="Como se conoce el negocio" />
         </div>
+        <div>
+          <label className="label">Tipo de documento</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button"
+              className={f.tipo_documento === 'RIF' ? 'btn-primary' : 'btn-ghost'}
+              onClick={() => set('tipo_documento', 'RIF')}>
+              RIF
+            </button>
+            <button type="button"
+              className={f.tipo_documento === 'Cedula' ? 'btn-primary' : 'btn-ghost'}
+              onClick={() => set('tipo_documento', 'Cedula')}>
+              Cédula
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">RIF</label>
-            <input className="input" value={f.rif} onChange={(e) => set('rif', e.target.value)} placeholder="J-12345678-9" />
+            <label className="label">{f.tipo_documento === 'Cedula' ? 'Cédula' : 'RIF'}</label>
+            <input className="input" value={f.rif} onChange={(e) => set('rif', e.target.value)} placeholder={f.tipo_documento === 'Cedula' ? 'V-12345678' : 'J-12345678-9'} />
           </div>
           <div>
             <label className="label">Teléfono</label>
@@ -198,9 +223,17 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
             <input className="input" type="number" inputMode="decimal" value={f.limite_credito} onChange={(e) => set('limite_credito', Number(e.target.value))} />
           </div>
         )}
-        <div>
-          <label className="label">Contacto / Dueño</label>
-          <input className="input" value={f.contacto_nombre} onChange={(e) => set('contacto_nombre', e.target.value)} placeholder="Persona de contacto" />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Contacto / Dueño</label>
+            <input className="input" value={f.contacto_nombre} onChange={(e) => set('contacto_nombre', e.target.value)} placeholder="Persona de contacto" />
+          </div>
+          <div>
+            <label className="label">Teléfono del dueño/contacto</label>
+            <input className="input" inputMode="tel" value={f.contacto_telefono}
+              onChange={(e) => set('contacto_telefono', e.target.value)}
+              placeholder="Ej: 0414-1234567 (distinto al del negocio)" />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -209,10 +242,14 @@ export default function ClienteForm({ onCerrar }: { onCerrar: () => void }) {
           </div>
           <div>
             <label className="label">Ruta</label>
-            <select className="input" value={f.ruta} onChange={(e) => set('ruta', e.target.value as Ruta)}>
-              <option value="">Selecciona…</option>
-              {RUTAS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            {esAdmin ? (
+              <select className="input" value={f.ruta} onChange={(e) => set('ruta', e.target.value as Ruta)}>
+                <option value="">Selecciona…</option>
+                {RUTAS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            ) : (
+              <input className="input bg-gray-100 text-gray-600" value={f.ruta || '—'} readOnly />
+            )}
           </div>
         </div>
         <div>

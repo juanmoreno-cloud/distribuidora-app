@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom';
-import { Users, ShoppingCart, Truck, Package } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { Users, ShoppingCart, Truck, Package, Download } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { puedeAbrir } from '../auth/permisos';
 import { ETIQUETA_ROL } from '../types';
 import HeaderAcciones from '../components/HeaderAcciones';
+import { db } from '../db/database';
+import { descargarInventarioCSV } from '../utils/csvExport';
 
 // Pantalla de inicio: saludo + accesos directos según el rol del usuario.
 export default function HomePage() {
   const { usuario } = useAuth();
+  const productos = useLiveQuery(() => db.productos.toArray(), []) ?? [];
   if (!usuario) return null;
 
   const accesos = [
@@ -43,6 +47,15 @@ export default function HomePage() {
           </Link>
         ))}
       </div>
+
+      {usuario.rol === 'vendedor' && (
+        <button
+          className="btn-ghost w-full mt-3"
+          onClick={() => descargarInventarioCSV(productos)}
+        >
+          <Download size={18} /> Descargar inventario
+        </button>
+      )}
     </div>
   );
 }

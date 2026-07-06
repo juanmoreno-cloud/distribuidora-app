@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ChevronDown, ChevronUp, FileText, Navigation, MapPin, Phone, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, FileText, Navigation, MapPin, Phone, CheckCircle2, Copy } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
@@ -154,6 +154,41 @@ function ParadaCard({
             </div>
           )}
 
+          {(() => {
+            const mapsUrl = parada.latitud != null && parada.longitud != null
+              ? `https://www.google.com/maps/search/?api=1&query=${parada.latitud},${parada.longitud}`
+              : cliente?.direccion
+                ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cliente.direccion)}`
+                : null;
+            return mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-ghost !min-h-[38px] text-xs inline-flex"
+              >
+                <Navigation size={15} /> Ver en Maps
+              </a>
+            );
+          })()}
+
+          {parada.latitud != null && parada.longitud != null && (
+            <div className="flex items-center gap-2 text-xs text-gray-500">
+              <span>{parada.latitud.toFixed(6)}, {parada.longitud.toFixed(6)}</span>
+              <button
+                type="button"
+                className="p-1 text-gray-400 active:text-gray-600"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${parada.latitud},${parada.longitud}`);
+                  toast('Coordenadas copiadas', 'success');
+                }}
+                aria-label="Copiar coordenadas"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+          )}
+
           <div className="rounded-lg bg-gray-50 divide-y divide-gray-100">
             {p.lineas.map((l) => (
               <div key={l.producto_codigo} className="flex justify-between p-2 text-sm">
@@ -167,6 +202,13 @@ function ParadaCard({
             <span>Total</span>
             <span className="text-green-600">{formatoMoneda(p.total_pedido)}</span>
           </div>
+
+          {p.notas && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-2 text-sm">
+              <p className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">Notas del pedido</p>
+              <p className="text-amber-900">{p.notas}</p>
+            </div>
+          )}
 
           <label className="flex items-center gap-2 select-none">
             <input
