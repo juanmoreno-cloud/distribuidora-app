@@ -5,6 +5,7 @@ import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react';
 import { db } from '../db/database';
 import type { Cliente, Pedido } from '../types';
 import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import { toast } from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import { formatoMoneda } from '../utils/formatters';
@@ -16,6 +17,7 @@ import {
 export default function PapeleraPage() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
+  const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
   const [aBorrar, setABorrar] = useState<{ tipo: 'cliente' | 'pedido'; item: Cliente | Pedido } | null>(null);
 
   const clientes = (useLiveQuery(() => db.clientes.toArray(), []) ?? []).filter((c) => c.eliminado);
@@ -46,14 +48,16 @@ export default function PapeleraPage() {
               <div key={c.id} className="card p-3">
                 <p className="font-medium">{c.nombre_fantasia || c.razon_social}</p>
                 <p className="text-xs text-gray-500">{c.rif}</p>
-                <div className="flex gap-2 mt-2">
-                  <button className="btn-ghost !min-h-[36px] text-xs flex-1" onClick={() => hacer(() => restaurarCliente(c, usuario), 'Cliente restaurado')}>
-                    <RotateCcw size={14} /> Restaurar
-                  </button>
-                  <button className="btn !min-h-[36px] text-xs flex-1 bg-red-600 text-white" onClick={() => setABorrar({ tipo: 'cliente', item: c })}>
-                    <Trash2 size={14} /> Eliminar definitivo
-                  </button>
-                </div>
+                {!soloLectura && (
+                  <div className="flex gap-2 mt-2">
+                    <button className="btn-ghost !min-h-[36px] text-xs flex-1" onClick={() => hacer(() => restaurarCliente(c, usuario), 'Cliente restaurado')}>
+                      <RotateCcw size={14} /> Restaurar
+                    </button>
+                    <button className="btn !min-h-[36px] text-xs flex-1 bg-red-600 text-white" onClick={() => setABorrar({ tipo: 'cliente', item: c })}>
+                      <Trash2 size={14} /> Eliminar definitivo
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </section>
@@ -66,14 +70,16 @@ export default function PapeleraPage() {
               <div key={p.id} className="card p-3">
                 <p className="font-medium">{p.cliente_nombre}</p>
                 <p className="text-xs text-gray-500">{formatoMoneda(p.total_pedido)} · {p.lineas.length} producto(s)</p>
-                <div className="flex gap-2 mt-2">
-                  <button className="btn-ghost !min-h-[36px] text-xs flex-1" onClick={() => hacer(() => restaurarPedido(p, usuario), 'Pedido restaurado')}>
-                    <RotateCcw size={14} /> Restaurar
-                  </button>
-                  <button className="btn !min-h-[36px] text-xs flex-1 bg-red-600 text-white" onClick={() => setABorrar({ tipo: 'pedido', item: p })}>
-                    <Trash2 size={14} /> Eliminar definitivo
-                  </button>
-                </div>
+                {!soloLectura && (
+                  <div className="flex gap-2 mt-2">
+                    <button className="btn-ghost !min-h-[36px] text-xs flex-1" onClick={() => hacer(() => restaurarPedido(p, usuario), 'Pedido restaurado')}>
+                      <RotateCcw size={14} /> Restaurar
+                    </button>
+                    <button className="btn !min-h-[36px] text-xs flex-1 bg-red-600 text-white" onClick={() => setABorrar({ tipo: 'pedido', item: p })}>
+                      <Trash2 size={14} /> Eliminar definitivo
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </section>

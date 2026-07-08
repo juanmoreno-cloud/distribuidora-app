@@ -39,9 +39,21 @@ export const PERMISOS: Record<Rol, PermisoRol> = {
     // El admin supervisa TODO: los 5 módulos visibles en la barra.
     tabs: ['inicio', 'clientes', 'pedidos', 'carga', 'despacho'],
   },
+  lector: {
+    rutaInicial: '/',
+    rutasPermitidas: ['/', '/clientes', '/pedidos', '/carga', '/despacho', '/usuarios', '/papelera', '/catalogo'],
+    tabs: ['inicio', 'clientes', 'pedidos', 'carga', 'despacho'],
+  },
 };
 
 // ¿El rol puede abrir esta ruta?
 export function puedeAbrir(rol: Rol, ruta: string): boolean {
   return PERMISOS[rol].rutasPermitidas.includes(ruta);
+}
+
+// ¿Este rol es de solo lectura? Se usa para ocultar/deshabilitar toda
+// acción de escritura (crear, editar, eliminar, marcar) en las pantallas,
+// aunque el rol pueda ABRIR el módulo (ve todo, pero no cambia nada).
+export function esSoloLectura(rol: Rol): boolean {
+  return rol === 'lector';
 }

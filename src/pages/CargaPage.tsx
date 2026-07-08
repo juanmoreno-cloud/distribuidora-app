@@ -9,6 +9,7 @@ import { mananaISO } from '../utils/formatters';
 import { generarPdfCarga } from '../utils/pdfGenerator';
 import { leerSesion } from '../hooks/useSession';
 import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import { toast } from '../components/Toast';
 
 // Orden sugerido de carga: lo que va al fondo del camión primero.
@@ -23,7 +24,7 @@ export default function CargaPage() {
   const sesion = leerSesion();
   const { usuario } = useAuth();
   // Almacenista y despachador consultan; solo el admin edita.
-  const soloLectura = usuario?.rol === 'almacenista' || usuario?.rol === 'despachador';
+  const soloLectura = usuario?.rol === 'almacenista' || usuario?.rol === 'despachador' || esSoloLectura(usuario?.rol ?? 'lector');
   const esAdmin = usuario?.rol === 'admin';
   const [fecha, setFecha] = useState(mananaISO());
   const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);

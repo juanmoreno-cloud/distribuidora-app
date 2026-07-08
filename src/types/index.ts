@@ -157,7 +157,7 @@ export interface Sesion {
 }
 
 // -------------------- Usuarios y roles --------------------
-export const ROLES = ['vendedor', 'despachador', 'almacenista', 'inventario', 'admin'] as const;
+export const ROLES = ['vendedor', 'despachador', 'almacenista', 'inventario', 'admin', 'lector'] as const;
 export type Rol = (typeof ROLES)[number];
 
 export const ETIQUETA_ROL: Record<Rol, string> = {
@@ -166,6 +166,7 @@ export const ETIQUETA_ROL: Record<Rol, string> = {
   almacenista: 'Almacenista',
   inventario: 'Analista de Inventario',
   admin: 'Administrador',
+  lector: 'Lector (solo lectura)',
 };
 
 export interface Usuario {

@@ -10,6 +10,7 @@ import { db } from '../db/database';
 import { formatoMoneda, fechaLegible, hoyISO } from '../utils/formatters';
 import { leerSesion } from '../hooks/useSession';
 import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import { toast } from '../components/Toast';
 import { eliminarPedido } from '../services/borrado';
 import type { Pedido, EstadoPedido } from '../types';
@@ -26,15 +27,19 @@ const COLOR_ESTADO: Record<EstadoPedido, string> = {
 type Tab = 'nuevo' | 'dia';
 
 export default function PedidosPage() {
-  const [tab, setTab] = useState<Tab>('nuevo');
+  const { usuario } = useAuth();
+  const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
+  const [tab, setTab] = useState<Tab>(soloLectura ? 'dia' : 'nuevo');
 
   return (
     <div>
       <PageHeader titulo="Pedidos" accion={<HeaderAcciones />} />
-      <div className="flex gap-2 p-3 bg-gray-100 sticky top-[53px] z-20">
-        <TabBtn activo={tab === 'nuevo'} onClick={() => setTab('nuevo')}>Nuevo pedido</TabBtn>
-        <TabBtn activo={tab === 'dia'} onClick={() => setTab('dia')}>Pedidos del día</TabBtn>
-      </div>
+      {!soloLectura && (
+        <div className="flex gap-2 p-3 bg-gray-100 sticky top-[53px] z-20">
+          <TabBtn activo={tab === 'nuevo'} onClick={() => setTab('nuevo')}>Nuevo pedido</TabBtn>
+          <TabBtn activo={tab === 'dia'} onClick={() => setTab('dia')}>Pedidos del día</TabBtn>
+        </div>
+      )}
 
       {tab === 'nuevo' ? <NuevoPedido /> : <PedidosDelDia />}
     </div>
@@ -55,6 +60,7 @@ function TabBtn({ activo, onClick, children }: { activo: boolean; onClick: () =>
 function PedidosDelDia() {
   const { usuario } = useAuth();
   const esAdmin = usuario?.rol === 'admin';
+  const verTodos = esAdmin || esSoloLectura(usuario?.rol ?? 'vendedor');
   const sesion = leerSesion();
   const hoy = hoyISO();
   const [aEliminar, setAEliminar] = useState<Pedido | null>(null);
@@ -65,11 +71,11 @@ function PedidosDelDia() {
   // solo los suyos tomados hoy. En ambos casos se excluyen los eliminados.
   const pedidos = useLiveQuery(async () => {
     const todos = (await db.pedidos.toArray()).filter((p) => !p.eliminado);
-    const lista = esAdmin
+    const lista = verTodos
       ? todos
       : todos.filter((p) => p.vendedor === sesion?.vendedor && p.fecha_pedido.slice(0, 10) === hoy);
     return lista.sort((a, b) => b.fecha_pedido.localeCompare(a.fecha_pedido));
-  }, [esAdmin]) ?? [];
+  }, [esAdmin, verTodos]) ?? [];
 
   async function eliminar(p: Pedido) {
     try { await eliminarPedido(p, usuario); toast('Pedido eliminado', 'success'); }

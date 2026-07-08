@@ -7,6 +7,7 @@ import type { Producto } from '../types';
 import { formatoMoneda } from '../utils/formatters';
 import { toast } from '../components/Toast';
 import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import HeaderAcciones from '../components/HeaderAcciones';
 
 // Catálogo (admin y Analista de Inventario): editar productos, precios y
@@ -16,6 +17,7 @@ export default function CatalogoPage() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const esAnalista = usuario?.rol === 'inventario'; // su única pantalla: sin botón volver
+  const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
   const [q, setQ] = useState('');
   const [mostrarNuevo, setMostrarNuevo] = useState(false);
 
@@ -39,9 +41,11 @@ export default function CatalogoPage() {
       </header>
 
       <div className="p-4 space-y-3 pb-24">
-        <button className="btn-primary w-full" onClick={() => setMostrarNuevo(true)}>
-          <Plus size={18} /> Nuevo producto
-        </button>
+        {!soloLectura && (
+          <button className="btn-primary w-full" onClick={() => setMostrarNuevo(true)}>
+            <Plus size={18} /> Nuevo producto
+          </button>
+        )}
 
         <div className="relative">
           <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -55,7 +59,7 @@ export default function CatalogoPage() {
         )}
         <p className="text-sm text-gray-500">{filtrados.length} producto(s)</p>
 
-        {filtrados.map((p) => <ProductoCard key={p.codigo} producto={p} />)}
+        {filtrados.map((p) => <ProductoCard key={p.codigo} producto={p} soloLectura={soloLectura} />)}
       </div>
 
       {mostrarNuevo && <NuevoProductoModal productos={productos} onCerrar={() => setMostrarNuevo(false)} />}
@@ -153,7 +157,7 @@ function NuevoProductoModal({ productos, onCerrar }: { productos: Producto[]; on
   );
 }
 
-function ProductoCard({ producto: p }: { producto: Producto }) {
+function ProductoCard({ producto: p, soloLectura }: { producto: Producto; soloLectura: boolean }) {
   const [descripcion, setDescripcion] = useState(p.descripcion);
   const [precio, setPrecio] = useState(String(p.precio_unitario));
   const [stock, setStock] = useState(p.stock != null ? String(p.stock) : '');
@@ -185,22 +189,22 @@ function ProductoCard({ producto: p }: { producto: Producto }) {
   return (
     <div className="card p-3">
       <div className="flex items-start justify-between gap-2">
-        <input className="input !min-h-[38px] text-sm font-medium flex-1" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+        <input className="input !min-h-[38px] text-sm font-medium flex-1 disabled:bg-gray-100 disabled:text-gray-500" value={descripcion} disabled={soloLectura} onChange={(e) => setDescripcion(e.target.value)} />
         {p.sincronizado === false && <span className="text-[10px] shrink-0 mt-2">🟡</span>}
       </div>
       <p className="text-[11px] text-gray-400 mt-1">#{p.codigo} · {p.grupo} · {p.unidad} · actual: {formatoMoneda(p.precio_unitario)}</p>
       <div className="flex items-end gap-2 mt-2">
         <div className="flex-1">
           <label className="label !mb-0.5 !text-xs">Precio ($)</label>
-          <input type="number" inputMode="decimal" step="0.01" min="0" className="input !min-h-[40px]"
-            value={precio} onChange={(e) => setPrecio(e.target.value)} />
+          <input type="number" inputMode="decimal" step="0.01" min="0" className="input !min-h-[40px] disabled:bg-gray-100 disabled:text-gray-500"
+            value={precio} disabled={soloLectura} onChange={(e) => setPrecio(e.target.value)} />
         </div>
         <div className="flex-1">
           <label className="label !mb-0.5 !text-xs">Stock (vacío = sin control)</label>
-          <input type="number" inputMode="numeric" min="0" className="input !min-h-[40px]"
-            value={stock} placeholder="—" onChange={(e) => setStock(e.target.value)} />
+          <input type="number" inputMode="numeric" min="0" className="input !min-h-[40px] disabled:bg-gray-100 disabled:text-gray-500"
+            value={stock} placeholder="—" disabled={soloLectura} onChange={(e) => setStock(e.target.value)} />
         </div>
-        <button className="btn-primary !min-h-[40px] !px-3" onClick={guardar} disabled={guardando || !cambio}>
+        <button className="btn-primary !min-h-[40px] !px-3" onClick={guardar} disabled={guardando || !cambio || soloLectura}>
           {guardando ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
         </button>
       </div>

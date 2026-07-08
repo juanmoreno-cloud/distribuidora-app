@@ -7,6 +7,7 @@ import { leerConfigSync, guardarConfigSync, probarConexion, syncCatalogo, syncDe
 import { fechaLegible } from '../utils/formatters';
 import { toast } from '../components/Toast';
 import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import { APP_VERSION } from '../config';
 
 // Pantalla de Configuración de la sincronización con Google Sheets.
@@ -15,6 +16,7 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
   const navigate = useNavigate();
   const { usuario } = useAuth();
   const esAdmin = usuario?.rol === 'admin';
+  const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
   const [url, setUrl] = useState('');
   const [token, setToken] = useState('');
   const [probando, setProbando] = useState(false);
@@ -88,8 +90,8 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
           {sincronizando ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />} Sincronizar ahora
         </button>
 
-        {/* Gestión de Usuarios, Catálogo y Papelera: SOLO admin */}
-        {esAdmin && (
+        {/* Gestión de Usuarios, Catálogo y Papelera: admin y lector (solo VER) */}
+        {(esAdmin || soloLectura) && (
           <>
             <button
               className="card p-4 w-full flex items-center gap-3 active:scale-[0.99] transition"

@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { db } from '../db/database';
 import { TIPOS_PAGO, type Cliente, type TipoPago } from '../types';
 import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import { toast } from '../components/Toast';
 import { contarPedidosDeCliente, eliminarCliente, eliminarClienteConPedidos } from '../services/borrado';
 
@@ -14,6 +15,7 @@ import { contarPedidosDeCliente, eliminarCliente, eliminarClienteConPedidos } fr
 export default function ClientesPage() {
   const { usuario } = useAuth();
   const esAdmin = usuario?.rol === 'admin';
+  const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
   const [mostrarForm, setMostrarForm] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [aEliminar, setAEliminar] = useState<Cliente | null>(null);
@@ -48,9 +50,11 @@ export default function ClientesPage() {
       <PageHeader
         titulo="Clientes"
         accion={
-          <button className="btn-primary !min-h-[40px] text-sm" onClick={() => setMostrarForm(true)}>
-            <Plus size={18} /> Nuevo Cliente
-          </button>
+          !soloLectura && (
+            <button className="btn-primary !min-h-[40px] text-sm" onClick={() => setMostrarForm(true)}>
+              <Plus size={18} /> Nuevo Cliente
+            </button>
+          )
         }
       />
 

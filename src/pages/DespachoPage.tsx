@@ -9,6 +9,8 @@ import { mananaISO, formatoMoneda } from '../utils/formatters';
 import { ordenarPorProximidad } from '../utils/geo';
 import { generarPdfDespacho } from '../utils/pdfGenerator';
 import { leerSesion } from '../hooks/useSession';
+import { useAuth } from '../auth/AuthContext';
+import { esSoloLectura } from '../auth/permisos';
 import { toast } from '../components/Toast';
 
 interface Parada {
@@ -20,6 +22,8 @@ interface Parada {
 
 export default function DespachoPage() {
   const sesion = leerSesion();
+  const { usuario } = useAuth();
+  const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
   const [fecha, setFecha] = useState(mananaISO());
   const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
   const [porProximidad, setPorProximidad] = useState(false);
@@ -101,6 +105,7 @@ export default function DespachoPage() {
                   key={parada.pedido.id}
                   numero={i + 1}
                   parada={parada}
+                  soloLectura={soloLectura}
                   abierto={expandido === parada.pedido.id}
                   onToggle={() => setExpandido((cur) => (cur === parada.pedido.id ? null : parada.pedido.id))}
                   onEntregado={marcarEntregado}
@@ -120,10 +125,11 @@ export default function DespachoPage() {
 }
 
 function ParadaCard({
-  numero, parada, abierto, onToggle, onEntregado, onObs,
+  numero, parada, soloLectura, abierto, onToggle, onEntregado, onObs,
 }: {
   numero: number;
   parada: Parada;
+  soloLectura: boolean;
   abierto: boolean;
   onToggle: () => void;
   onEntregado: (p: Pedido, v: boolean) => void;
@@ -215,6 +221,7 @@ function ParadaCard({
               type="checkbox"
               className="w-5 h-5 accent-green-600"
               checked={!!p.entregado}
+              disabled={soloLectura}
               onChange={(e) => onEntregado(p, e.target.checked)}
             />
             <span className="font-medium">Entregado ✅</span>
@@ -223,9 +230,10 @@ function ParadaCard({
           <div>
             <label className="label">Observaciones de entrega</label>
             <textarea
-              className="input min-h-[52px] py-2"
+              className="input min-h-[52px] py-2 disabled:bg-gray-100 disabled:text-gray-500"
               defaultValue={p.obs_entrega ?? ''}
               placeholder="Cliente no estaba, rechazó producto, etc."
+              disabled={soloLectura}
               onBlur={(e) => onObs(p, e.target.value)}
             />
           </div>
