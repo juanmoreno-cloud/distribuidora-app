@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { ArrowLeft, Plug, Loader2, Download, UserCog, ChevronRight, Trash2, RefreshCw, Lock, Tags } from 'lucide-react';
+import { ArrowLeft, Plug, Loader2, UserCog, ChevronRight, Trash2, RefreshCw, Lock, Tags } from 'lucide-react';
 import { db } from '../db/database';
 import { leerConfigSync, guardarConfigSync, probarConexion, syncCatalogo, syncDesdeSheets, sincronizarTodo } from '../services/googleSheets';
 import { fechaLegible } from '../utils/formatters';
@@ -172,7 +172,7 @@ export default function ConfigPage({ onCerrar }: { onCerrar: () => void }) {
         )}
 
         <button className="btn-ghost w-full" onClick={bajarDatos} disabled={bajando}>
-          {bajando ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />} Descargar catálogo y clientes
+          {bajando ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />} Actualizar catálogo y clientes
         </button>
 
         {ultimaSync?.valor != null && (

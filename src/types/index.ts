@@ -50,6 +50,21 @@ export const RUTAS = [
 ] as const;
 export type Ruta = (typeof RUTAS)[number];
 
+export const ZONAS_CAMION = ['Catia', 'El Paraíso', 'Quinta Crespo'] as const;
+export type ZonaCamion = (typeof ZONAS_CAMION)[number];
+
+// Cada camión reparte 2 rutas de vendedor (la "1" y la "2" de su zona) — Carga y
+// Despacho agrupan por esta zona en vez de por ruta exacta, porque solo hay 3
+// camiones físicos aunque haya 6 rutas de vendedores.
+const RUTA_A_ZONA: Record<string, ZonaCamion> = {
+  'Catia 1': 'Catia', 'Catia 2': 'Catia',
+  'El Paraíso 1': 'El Paraíso', 'El Paraíso 2': 'El Paraíso',
+  'Quinta Crespo 1': 'Quinta Crespo', 'Quinta Crespo 2': 'Quinta Crespo',
+};
+export function zonaDeRuta(ruta: string): ZonaCamion | '' {
+  return RUTA_A_ZONA[ruta] ?? '';
+}
+
 export const TIPOS_PAGO = ['Contado', 'Crédito'] as const;
 export type TipoPago = (typeof TIPOS_PAGO)[number];
 
@@ -61,6 +76,11 @@ export const ESTADOS_PEDIDO = [
   'Cancelado',
 ] as const;
 export type EstadoPedido = (typeof ESTADOS_PEDIDO)[number];
+
+// Día fijo semanal de visita del vendedor a este cliente (uno solo, no domingo:
+// la distribuidora no reparte domingo).
+export const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'] as const;
+export type DiaSemana = (typeof DIAS_SEMANA)[number];
 
 // -------------------- Cliente --------------------
 export interface Cliente {
@@ -80,6 +100,7 @@ export interface Cliente {
   contacto_telefono?: string; // teléfono del dueño/contacto, distinto al teléfono del negocio
   vendedor_asignado: string; // nombre del vendedor logueado (o dato heredado)
   ruta: Ruta | '';
+  dia_visita?: DiaSemana; // día fijo semanal de visita; solo lo asigna el admin
   tipo_pago: TipoPago;
   limite_credito: number;
   observaciones: string;

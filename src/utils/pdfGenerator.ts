@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { CargaItem, Pedido } from '../types';
+import type { CargaItem, Pedido, Producto, Cliente } from '../types';
 import { formatoMoneda, fechaLegible } from './formatters';
 
 const EMPRESA = 'DISTRIBUIDORA';
@@ -15,7 +15,7 @@ export function generarPdfCarga(items: CargaItem[], fecha: string, ruta: string)
   doc.setFontSize(11);
   doc.setTextColor(90);
   doc.text(`Fecha de entrega: ${fechaLegible(fecha)}`, 14, 26);
-  doc.text(`Ruta: ${ruta}`, 14, 32);
+  doc.text(`Zona: ${ruta}`, 14, 32);
 
   autoTable(doc, {
     startY: 38,
@@ -44,7 +44,7 @@ export function generarPdfDespacho(pedidos: Pedido[], fecha: string, ruta: strin
     doc.text(`${EMPRESA} — Guía de Entrega`, 14, 18);
     doc.setFontSize(10);
     doc.setTextColor(90);
-    doc.text(`Fecha: ${fechaLegible(fecha)}    Ruta: ${ruta}`, 14, 25);
+    doc.text(`Fecha: ${fechaLegible(fecha)}    Zona: ${ruta}`, 14, 25);
 
     // Datos del cliente
     doc.setTextColor(0);
@@ -80,4 +80,80 @@ export function generarPdfDespacho(pedidos: Pedido[], fecha: string, ruta: strin
   });
 
   doc.save(`despacho-${fecha}-${ruta.replace(/[^\w]/g, '_')}.pdf`);
+}
+
+// ====================================================================
+// PDF de Catálogo/Inventario: SKU, producto, stock disponible y precio,
+// agrupado por categoría (grupo) para que se vea prolijo como catálogo.
+// ====================================================================
+export function generarPdfCatalogo(productos: Producto[]): void {
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.setTextColor(0);
+  doc.text(`${EMPRESA} — Catálogo e Inventario`, 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(90);
+  doc.text(`Generado: ${fechaLegible(new Date().toISOString())}`, 14, 25);
+
+  const porGrupo = new Map<string, Producto[]>();
+  for (const p of productos) {
+    const clave = p.grupo || 'Sin categoría';
+    const lista = porGrupo.get(clave) ?? [];
+    lista.push(p);
+    porGrupo.set(clave, lista);
+  }
+  const gruposOrdenados = [...porGrupo.keys()].sort((a, b) => a.localeCompare(b));
+
+  let startY = 32;
+  for (const grupo of gruposOrdenados) {
+    const items = porGrupo.get(grupo)!.sort((a, b) => a.descripcion.localeCompare(b.descripcion));
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text(grupo, 14, startY);
+
+    autoTable(doc, {
+      startY: startY + 4,
+      head: [['SKU', 'Producto', 'Disponible', 'Precio']],
+      body: items.map((p) => [
+        p.codigo, p.descripcion, p.stock ?? '—', formatoMoneda(p.precio_unitario),
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [66, 133, 244] },
+      margin: { top: 20 },
+    });
+
+    // @ts-expect-error lastAutoTable lo agrega el plugin autotable
+    startY = (doc.lastAutoTable?.finalY ?? startY + 20) + 10;
+    if (startY > 260) { doc.addPage(); startY = 20; }
+  }
+
+  const fecha = new Date().toISOString().slice(0, 10);
+  doc.save(`catalogo-${fecha}.pdf`);
+}
+
+// ====================================================================
+// PDF con el listado de clientes de UN vendedor (los que tiene asignados).
+// ====================================================================
+export function generarPdfClientesVendedor(clientes: Cliente[], nombreVendedor: string): void {
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.setTextColor(0);
+  doc.text(`${EMPRESA} — Mis Clientes`, 14, 18);
+  doc.setFontSize(10);
+  doc.setTextColor(90);
+  doc.text(`Vendedor: ${nombreVendedor}`, 14, 25);
+  doc.text(`Generado: ${fechaLegible(new Date().toISOString())}`, 14, 30);
+
+  autoTable(doc, {
+    startY: 36,
+    head: [['Cliente', 'RIF/Cédula', 'Teléfono', 'Dirección', 'Ruta', 'Día visita']],
+    body: clientes.map((c) => [
+      c.nombre_fantasia || c.razon_social, c.rif, c.telefono, c.direccion, c.ruta, c.dia_visita ?? '—',
+    ]),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [66, 133, 244] },
+  });
+
+  const fecha = new Date().toISOString().slice(0, 10);
+  doc.save(`mis-clientes-${fecha}.pdf`);
 }

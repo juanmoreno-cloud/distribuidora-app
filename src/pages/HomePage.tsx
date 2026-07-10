@@ -1,17 +1,19 @@
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Users, ShoppingCart, Truck, Package, Download } from 'lucide-react';
+import { Users, ShoppingCart, Truck, Package, Download, FileText } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { puedeAbrir } from '../auth/permisos';
 import { ETIQUETA_ROL } from '../types';
 import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
-import { descargarInventarioCSV } from '../utils/csvExport';
+import { generarPdfCatalogo, generarPdfClientesVendedor } from '../utils/pdfGenerator';
+import { leerSesion } from '../hooks/useSession';
 
 // Pantalla de inicio: saludo + accesos directos según el rol del usuario.
 export default function HomePage() {
   const { usuario } = useAuth();
   const productos = useLiveQuery(() => db.productos.toArray(), []) ?? [];
+  const clientes = useLiveQuery(() => db.clientes.toArray(), []) ?? [];
   if (!usuario) return null;
 
   const accesos = [
@@ -49,12 +51,24 @@ export default function HomePage() {
       </div>
 
       {usuario.rol === 'vendedor' && (
-        <button
-          className="btn-ghost w-full mt-3"
-          onClick={() => descargarInventarioCSV(productos)}
-        >
-          <Download size={18} /> Descargar inventario
-        </button>
+        <div className="mt-3 space-y-2">
+          <button
+            className="btn-ghost w-full"
+            onClick={() => generarPdfCatalogo(productos)}
+          >
+            <Download size={18} /> Catálogo e inventario (PDF)
+          </button>
+          <button
+            className="btn-ghost w-full"
+            onClick={() => {
+              const sesion = leerSesion();
+              const misClientes = clientes.filter((c) => !c.eliminado && c.vendedor_asignado === sesion?.vendedor);
+              generarPdfClientesVendedor(misClientes, sesion?.vendedor ?? '');
+            }}
+          >
+            <FileText size={18} /> Mis clientes (PDF)
+          </button>
+        </div>
       )}
     </div>
   );

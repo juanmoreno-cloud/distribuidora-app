@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Search, MapPin, CloudOff, Trash2, CreditCard, X } from 'lucide-react';
+import { Plus, Search, MapPin, CloudOff, Trash2, CreditCard, Calendar, X } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import ClienteForm from '../components/ClienteForm';
 import ConfirmModal from '../components/ConfirmModal';
 import { db } from '../db/database';
-import { TIPOS_PAGO, type Cliente, type TipoPago } from '../types';
+import { TIPOS_PAGO, DIAS_SEMANA, type Cliente, type TipoPago, type DiaSemana } from '../types';
 import { useAuth } from '../auth/AuthContext';
 import { esSoloLectura } from '../auth/permisos';
 import { toast } from '../components/Toast';
@@ -20,6 +20,7 @@ export default function ClientesPage() {
   const [busqueda, setBusqueda] = useState('');
   const [aEliminar, setAEliminar] = useState<Cliente | null>(null);
   const [aEditarCredito, setAEditarCredito] = useState<Cliente | null>(null);
+  const [aEditarDiaVisita, setAEditarDiaVisita] = useState<Cliente | null>(null);
   const [pedidosAsociados, setPedidosAsociados] = useState(0);
 
   // Solo clientes NO eliminados.
@@ -75,7 +76,7 @@ export default function ClientesPage() {
 
         <div className="space-y-2">
           {filtrados.map((c) => (
-            <ClienteCard key={c.id} cliente={c} esAdmin={esAdmin} onEliminar={() => pedirEliminar(c)} onCredito={() => setAEditarCredito(c)} />
+            <ClienteCard key={c.id} cliente={c} esAdmin={esAdmin} onEliminar={() => pedirEliminar(c)} onCredito={() => setAEditarCredito(c)} onDiaVisita={() => setAEditarDiaVisita(c)} />
           ))}
           {filtrados.length === 0 && <p className="text-center text-gray-400 py-8">No hay clientes que coincidan.</p>}
         </div>
@@ -84,6 +85,8 @@ export default function ClientesPage() {
       {mostrarForm && <ClienteForm onCerrar={() => setMostrarForm(false)} />}
 
       {aEditarCredito && <EditarCredito cliente={aEditarCredito} onCerrar={() => setAEditarCredito(null)} />}
+
+      {aEditarDiaVisita && <EditarDiaVisita cliente={aEditarDiaVisita} onCerrar={() => setAEditarDiaVisita(null)} />}
 
       {aEliminar && (
         <ConfirmModal
@@ -148,7 +151,38 @@ function EditarCredito({ cliente: c, onCerrar }: { cliente: Cliente; onCerrar: (
   );
 }
 
-function ClienteCard({ cliente: c, esAdmin, onEliminar, onCredito }: { cliente: Cliente; esAdmin: boolean; onEliminar: () => void; onCredito: () => void }) {
+// Mini-modal (SOLO admin) para asignar el día fijo semanal de visita a un
+// cliente existente. Mismo patrón que EditarCredito.
+function EditarDiaVisita({ cliente: c, onCerrar }: { cliente: Cliente; onCerrar: () => void }) {
+  const [dia, setDia] = useState<DiaSemana | ''>(c.dia_visita ?? '');
+
+  async function guardar() {
+    await db.clientes.update(c.id, { dia_visita: dia || undefined, sincronizado: false, actualizado_en: new Date().toISOString() });
+    toast('Día de visita actualizado ✓', 'success');
+    onCerrar();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={onCerrar}>
+      <div className="card w-full max-w-sm p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold">Día de visita de {c.nombre_fantasia || c.razon_social}</h3>
+          <button className="p-1 text-gray-500" onClick={onCerrar}><X size={18} /></button>
+        </div>
+        <div>
+          <label className="label">Día fijo semanal</label>
+          <select className="input" value={dia} onChange={(e) => setDia(e.target.value as DiaSemana)}>
+            <option value="">Sin asignar</option>
+            {DIAS_SEMANA.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        </div>
+        <button className="btn-success w-full" onClick={guardar}>Guardar</button>
+      </div>
+    </div>
+  );
+}
+
+function ClienteCard({ cliente: c, esAdmin, onEliminar, onCredito, onDiaVisita }: { cliente: Cliente; esAdmin: boolean; onEliminar: () => void; onCredito: () => void; onDiaVisita: () => void }) {
   return (
     <div className="card p-3">
       <div className="flex items-start justify-between gap-2">
@@ -158,6 +192,7 @@ function ClienteCard({ cliente: c, esAdmin, onEliminar, onCredito }: { cliente: 
           {c.direccion && <p className="text-xs text-gray-500 truncate">{c.direccion}</p>}
           {c.contacto_nombre && <p className="text-xs text-gray-500">👤 {c.contacto_nombre}{c.contacto_telefono ? ` · ${c.contacto_telefono}` : ''}</p>}
           {c.telefono && <p className="text-xs text-gray-500">📞 {c.telefono} (negocio)</p>}
+          {c.dia_visita && <p className="text-xs text-gray-500">📅 Visita: {c.dia_visita}</p>}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className={`text-[10px] px-2 py-0.5 rounded-full ${badgeEstado(c.estado)}`}>{c.estado}</span>
@@ -174,6 +209,9 @@ function ClienteCard({ cliente: c, esAdmin, onEliminar, onCredito }: { cliente: 
           <div className="flex items-center gap-2">
             <button className="text-marca flex items-center gap-1 text-xs font-medium p-1" onClick={onCredito}>
               <CreditCard size={15} /> Crédito
+            </button>
+            <button className="text-marca flex items-center gap-1 text-xs font-medium p-1" onClick={onDiaVisita}>
+              <Calendar size={15} /> Día de visita
             </button>
             <button className="text-red-500 flex items-center gap-1 text-xs font-medium p-1" onClick={onEliminar}>
               <Trash2 size={15} /> Eliminar

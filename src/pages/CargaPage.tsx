@@ -4,7 +4,7 @@ import { FileText, Package, Lock, ChevronDown, ChevronUp } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
-import { RUTAS, type CargaItem, type Pedido, type Producto } from '../types';
+import { ZONAS_CAMION, type ZonaCamion, zonaDeRuta, type CargaItem, type Pedido, type Producto } from '../types';
 import { mananaISO } from '../utils/formatters';
 import { generarPdfCarga } from '../utils/pdfGenerator';
 import { leerSesion } from '../hooks/useSession';
@@ -27,7 +27,7 @@ export default function CargaPage() {
   const soloLectura = usuario?.rol === 'almacenista' || usuario?.rol === 'despachador' || esSoloLectura(usuario?.rol ?? 'lector');
   const esAdmin = usuario?.rol === 'admin';
   const [fecha, setFecha] = useState(mananaISO());
-  const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
+  const [zona, setZona] = useState<ZonaCamion>(zonaDeRuta(sesion?.ruta ?? '') || ZONAS_CAMION[0]);
   const [expandido, setExpandido] = useState<number | null>(null);
 
   const pedidos = useLiveQuery(() => db.pedidos.toArray(), []) ?? [];
@@ -43,7 +43,7 @@ export default function CargaPage() {
     for (const ped of pedidos as Pedido[]) {
       if (ped.eliminado) continue;
       if (ped.fecha_entrega.slice(0, 10) !== fecha) continue;
-      if (ped.ruta !== ruta) continue;
+      if (zonaDeRuta(ped.ruta) !== zona) continue;
       if (ped.estado_pedido === 'Cancelado') continue;
       for (const l of ped.lineas) {
         const prev = acc.get(l.producto_codigo);
@@ -52,7 +52,7 @@ export default function CargaPage() {
           prev.cantidad_total += l.cantidad;
         } else {
           acc.set(l.producto_codigo, {
-            fecha_entrega: fecha, ruta,
+            fecha_entrega: fecha, ruta: zona,
             producto_codigo: l.producto_codigo,
             producto_descripcion: l.producto_descripcion,
             grupo: prod?.grupo ?? '—',
@@ -69,7 +69,7 @@ export default function CargaPage() {
     const ordenados = [...acc.values()].sort((a, b) =>
       ordenGrupo(a.grupo) - ordenGrupo(b.grupo) || a.producto_descripcion.localeCompare(b.producto_descripcion));
     return { items: ordenados, desglose: des };
-  }, [pedidos, productos, fecha, ruta]);
+  }, [pedidos, productos, fecha, zona]);
 
   // Edición del admin: cambia la cantidad de ese producto EN el pedido real.
   // Cantidad 0 = quitar el producto del pedido. Carga/Despacho se recalculan solos.
@@ -94,7 +94,7 @@ export default function CargaPage() {
 
   function descargarPdf() {
     if (items.length === 0) { toast('No hay nada que cargar para esa fecha y ruta.', 'error'); return; }
-    generarPdfCarga(items, fecha, ruta);
+    generarPdfCarga(items, fecha, zona);
   }
 
   return (
@@ -114,9 +114,9 @@ export default function CargaPage() {
             <input type="date" className="input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </div>
           <div>
-            <label className="label">Ruta</label>
-            <select className="input" value={ruta} onChange={(e) => setRuta(e.target.value)}>
-              {RUTAS.map((r) => <option key={r} value={r}>{r}</option>)}
+            <label className="label">Zona (camión)</label>
+            <select className="input" value={zona} onChange={(e) => setZona(e.target.value as ZonaCamion)}>
+              {ZONAS_CAMION.map((z) => <option key={z} value={z}>{z}</option>)}
             </select>
           </div>
         </div>

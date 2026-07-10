@@ -24,7 +24,7 @@ const COLOR_ESTADO: Record<EstadoPedido, string> = {
   'Cancelado': 'bg-red-100 text-red-700',
 };
 
-type Tab = 'nuevo' | 'dia';
+type Tab = 'nuevo' | 'dia' | 'historial';
 
 export default function PedidosPage() {
   const { usuario } = useAuth();
@@ -38,10 +38,11 @@ export default function PedidosPage() {
         <div className="flex gap-2 p-3 bg-gray-100 sticky top-[53px] z-20">
           <TabBtn activo={tab === 'nuevo'} onClick={() => setTab('nuevo')}>Nuevo pedido</TabBtn>
           <TabBtn activo={tab === 'dia'} onClick={() => setTab('dia')}>Pedidos del día</TabBtn>
+          <TabBtn activo={tab === 'historial'} onClick={() => setTab('historial')}>Historial</TabBtn>
         </div>
       )}
 
-      {tab === 'nuevo' ? <NuevoPedido /> : <PedidosDelDia />}
+      {tab === 'nuevo' ? <NuevoPedido /> : tab === 'dia' ? <PedidosDelDia /> : <HistorialPedidos />}
     </div>
   );
 }
@@ -171,6 +172,74 @@ function PedidoCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+const DIAS_HISTORIAL = 3;
+
+// Pedidos ENTREGADOS cuya fecha de entrega cae dentro de los últimos
+// DIAS_HISTORIAL días (hoy inclusive). Misma visibilidad que "Pedidos del
+// día": vendedor ve solo los suyos, admin/lector ven todos.
+function HistorialPedidos() {
+  const { usuario } = useAuth();
+  const esAdmin = usuario?.rol === 'admin';
+  const verTodos = esAdmin || esSoloLectura(usuario?.rol ?? 'vendedor');
+  const sesion = leerSesion();
+  const [aEliminar, setAEliminar] = useState<Pedido | null>(null);
+  const [aEditar, setAEditar] = useState<Pedido | null>(null);
+  const [expandido, setExpandido] = useState<string | null>(null);
+
+  const limite = new Date();
+  limite.setDate(limite.getDate() - (DIAS_HISTORIAL - 1));
+  const limiteISO = limite.toISOString().slice(0, 10);
+
+  const pedidos = useLiveQuery(async () => {
+    const todos = (await db.pedidos.toArray()).filter((p) => !p.eliminado);
+    const entregados = todos.filter((p) =>
+      (p.entregado === true || p.estado_pedido === 'Entregado') &&
+      p.fecha_entrega.slice(0, 10) >= limiteISO);
+    const lista = verTodos
+      ? entregados
+      : entregados.filter((p) => p.vendedor === sesion?.vendedor);
+    return lista.sort((a, b) => b.fecha_entrega.localeCompare(a.fecha_entrega));
+  }, [esAdmin, verTodos, limiteISO]) ?? [];
+
+  async function eliminar(p: Pedido) {
+    try { await eliminarPedido(p, usuario); toast('Pedido eliminado', 'success'); }
+    catch (e) { toast((e as Error).message, 'error'); }
+    finally { setAEliminar(null); }
+  }
+
+  if (pedidos.length === 0) {
+    return <p className="p-8 text-center text-gray-400">No hay pedidos entregados en los últimos {DIAS_HISTORIAL} días.</p>;
+  }
+
+  return (
+    <div className="p-4 space-y-2">
+      <p className="text-sm text-gray-500">{pedidos.length} pedido(s) entregado(s) · últimos {DIAS_HISTORIAL} días</p>
+      {pedidos.map((p) => (
+        <PedidoCard
+          key={p.id}
+          pedido={p}
+          esAdmin={esAdmin}
+          abierto={expandido === p.id}
+          onToggle={() => setExpandido((cur) => (cur === p.id ? null : p.id))}
+          onEliminar={() => setAEliminar(p)}
+          onEditar={() => setAEditar(p)}
+        />
+      ))}
+
+      {aEliminar && (
+        <ConfirmModal
+          titulo="Eliminar pedido"
+          mensaje={<>¿Eliminar pedido de <b>{aEliminar.cliente_nombre}</b> por <b>{formatoMoneda(aEliminar.total_pedido)}</b>? Esta acción no se puede deshacer.</>}
+          acciones={[{ texto: 'Eliminar definitivamente', tono: 'peligro', onClick: () => eliminar(aEliminar) }]}
+          onCancelar={() => setAEliminar(null)}
+        />
+      )}
+
+      {aEditar && <EditarPedido pedido={aEditar} onCerrar={() => setAEditar(null)} />}
     </div>
   );
 }

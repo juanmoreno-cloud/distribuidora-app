@@ -22,6 +22,7 @@ export default function NuevoPedido() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [mostrarFormCliente, setMostrarFormCliente] = useState(false);
   const [confirmado, setConfirmado] = useState<Pedido | null>(null);
+  const [revisando, setRevisando] = useState(false);
 
   // Crédito disponible del cliente (para la advertencia).
   const totalPendiente = useLiveQuery(async () => {
@@ -85,21 +86,18 @@ export default function NuevoPedido() {
     setLineas((prev) => prev.filter((l) => l.producto_codigo !== codigo));
   }
 
-  async function confirmar() {
-    if (!cliente) { toast('Selecciona un cliente primero.', 'error'); return; }
-    if (lineas.length === 0) { toast('Agrega al menos un producto.', 'error'); return; }
-
-    const pedido: Pedido = {
+  function armarPedido(): Pedido {
+    return {
       id: uuid(),
       // Se ancla al mediodía local para que el día no se corra por zona horaria.
       fecha_pedido: new Date(fechaPedido + 'T12:00:00').toISOString(),
       fecha_entrega: new Date(fechaEntrega + 'T12:00:00').toISOString(),
       vendedor: sesion?.vendedor ?? '',
       // La ruta se toma de la ruta asignada del vendedor; si no tiene, la del cliente.
-      ruta: sesion?.ruta || cliente.ruta || '',
-      cliente_id: cliente.id,
-      cliente_nombre: cliente.nombre_fantasia || cliente.razon_social,
-      tipo_pago: cliente.tipo_pago,
+      ruta: sesion?.ruta || cliente!.ruta || '',
+      cliente_id: cliente!.id,
+      cliente_nombre: cliente!.nombre_fantasia || cliente!.razon_social,
+      tipo_pago: cliente!.tipo_pago,
       estado_pedido: 'Pendiente',
       lineas,
       total_pedido: total,
@@ -107,9 +105,19 @@ export default function NuevoPedido() {
       sincronizado: false,
       actualizado_en: new Date().toISOString(),
     };
+  }
 
+  function revisar() {
+    if (!cliente) { toast('Selecciona un cliente primero.', 'error'); return; }
+    if (lineas.length === 0) { toast('Agrega al menos un producto.', 'error'); return; }
+    setRevisando(true);
+  }
+
+  async function guardarPedido() {
+    const pedido = armarPedido();
     try {
       await db.pedidos.add(pedido);
+      setRevisando(false);
       setConfirmado(pedido);
       toast('Pedido guardado. Se sincronizará cuando haya internet.', 'success');
     } catch (e) {
@@ -124,6 +132,62 @@ export default function NuevoPedido() {
     setLineas([]);
     setNotas('');
     setConfirmado(null);
+    setRevisando(false);
+  }
+
+  // ---- Pantalla de resumen antes de guardar ----
+  if (revisando && cliente) {
+    return (
+      <div className="p-4 space-y-4">
+        <h2 className="text-lg font-bold">Revisar pedido</h2>
+        <div className="card p-4 space-y-3">
+          <div>
+            <p className="text-xs text-gray-500">Cliente</p>
+            <p className="font-semibold">{cliente.nombre_fantasia || cliente.razon_social}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Fecha de entrega</p>
+            <p className="font-medium">{fechaEntrega}</p>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {lineas.map((l) => (
+              <div key={l.producto_codigo} className="flex justify-between py-2 text-sm">
+                <span>{l.cantidad} × {l.producto_descripcion}</span>
+                <span className="font-medium">{formatoMoneda(l.subtotal)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between font-bold text-lg border-t border-gray-100 pt-2">
+            <span>Total</span>
+            <span className="text-green-600">{formatoMoneda(total)}</span>
+          </div>
+          {notas && (
+            <div>
+              <p className="text-xs text-gray-500">Notas</p>
+              <p className="text-sm">{notas}</p>
+            </div>
+          )}
+        </div>
+        {excedeCredito && (
+          <div className="card p-3 bg-orange-50 border-orange-200 flex items-center gap-2 text-orange-800 text-sm">
+            <AlertTriangle size={18} />
+            Este pedido supera el límite de crédito disponible. Quedará para aprobación del admin.
+          </div>
+        )}
+        {sinStock.length > 0 && (
+          <div className="card p-3 bg-orange-50 border-orange-200 text-orange-800 text-sm">
+            <p className="flex items-center gap-2 font-medium"><AlertTriangle size={18} /> Inventario insuficiente:</p>
+            {sinStock.map((l) => <p key={l.producto_codigo} className="text-xs mt-1">• {l.producto_descripcion} (pides {l.cantidad})</p>)}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <button className="btn-ghost" onClick={() => setRevisando(false)}>Volver a editar</button>
+          <button className="btn-success" onClick={guardarPedido}>
+            <Check size={18} /> Confirmar pedido
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // ---- Pantalla de resumen tras confirmar ----
@@ -266,8 +330,8 @@ export default function NuevoPedido() {
           <span className="text-gray-500">Total del pedido</span>
           <span className="text-2xl font-bold text-green-600">{formatoMoneda(total)}</span>
         </div>
-        <button className="btn-success w-full" onClick={confirmar}>
-          <Check size={18} /> CONFIRMAR PEDIDO
+        <button className="btn-success w-full" onClick={revisar}>
+          <Check size={18} /> REVISAR PEDIDO
         </button>
       </div>
 

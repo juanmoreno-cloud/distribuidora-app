@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, FileText, Navigation, MapPin, Phone, CheckCircl
 import PageHeader from '../components/PageHeader';
 import HeaderAcciones from '../components/HeaderAcciones';
 import { db } from '../db/database';
-import { RUTAS, type Cliente, type Pedido } from '../types';
+import { ZONAS_CAMION, type ZonaCamion, zonaDeRuta, type Cliente, type Pedido } from '../types';
 import { mananaISO, formatoMoneda } from '../utils/formatters';
 import { ordenarPorProximidad } from '../utils/geo';
 import { generarPdfDespacho } from '../utils/pdfGenerator';
@@ -25,7 +25,7 @@ export default function DespachoPage() {
   const { usuario } = useAuth();
   const soloLectura = esSoloLectura(usuario?.rol ?? 'lector');
   const [fecha, setFecha] = useState(mananaISO());
-  const [ruta, setRuta] = useState<string>(sesion?.ruta || RUTAS[0]);
+  const [zona, setZona] = useState<ZonaCamion>(zonaDeRuta(sesion?.ruta ?? '') || ZONAS_CAMION[0]);
   const [porProximidad, setPorProximidad] = useState(false);
   const [expandido, setExpandido] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ export default function DespachoPage() {
   const paradas = useMemo<Parada[]>(() => {
     const mapaCli = new Map<string, Cliente>(clientes.map((c) => [c.id, c]));
     let lista: Parada[] = (pedidos as Pedido[])
-      .filter((p) => !p.eliminado && p.fecha_entrega.slice(0, 10) === fecha && p.ruta === ruta && p.estado_pedido !== 'Cancelado')
+      .filter((p) => !p.eliminado && p.fecha_entrega.slice(0, 10) === fecha && zonaDeRuta(p.ruta) === zona && p.estado_pedido !== 'Cancelado')
       .map((p) => {
         const cli = mapaCli.get(p.cliente_id);
         return { pedido: p, cliente: cli, latitud: cli?.latitud, longitud: cli?.longitud };
@@ -47,7 +47,7 @@ export default function DespachoPage() {
       lista = lista.sort((a, b) => a.pedido.cliente_nombre.localeCompare(b.pedido.cliente_nombre));
     }
     return lista;
-  }, [pedidos, clientes, fecha, ruta, porProximidad]);
+  }, [pedidos, clientes, fecha, zona, porProximidad]);
 
   async function marcarEntregado(pedido: Pedido, entregado: boolean) {
     await db.pedidos.update(pedido.id, {
@@ -64,7 +64,7 @@ export default function DespachoPage() {
 
   function descargarPdf() {
     if (paradas.length === 0) { toast('No hay entregas para esa fecha y ruta.', 'error'); return; }
-    generarPdfDespacho(paradas.map((p) => p.pedido), fecha, ruta);
+    generarPdfDespacho(paradas.map((p) => p.pedido), fecha, zona);
   }
 
   return (
@@ -78,9 +78,9 @@ export default function DespachoPage() {
             <input type="date" className="input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </div>
           <div>
-            <label className="label">Ruta</label>
-            <select className="input" value={ruta} onChange={(e) => setRuta(e.target.value)}>
-              {RUTAS.map((r) => <option key={r} value={r}>{r}</option>)}
+            <label className="label">Zona (camión)</label>
+            <select className="input" value={zona} onChange={(e) => setZona(e.target.value as ZonaCamion)}>
+              {ZONAS_CAMION.map((z) => <option key={z} value={z}>{z}</option>)}
             </select>
           </div>
         </div>

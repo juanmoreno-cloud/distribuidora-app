@@ -352,6 +352,7 @@ function clienteAFila(c: Cliente) {
     tipo_pago: c.tipo_pago, limite_credito: c.limite_credito, observaciones: c.observaciones,
     fecha_registro: c.fecha_registro, actualizado_en: c.actualizado_en ?? '',
     tipo_documento: c.tipo_documento ?? '', contacto_telefono: c.contacto_telefono ?? '',
+    dia_visita: c.dia_visita ?? '',
   };
 }
 
@@ -367,6 +368,7 @@ function filaACliente(r: any, id: string): Cliente {
     contacto_nombre: String(r.contacto_nombre ?? ''),
     tipo_documento: (r.tipo_documento || 'RIF') as Cliente['tipo_documento'],
     contacto_telefono: String(r.contacto_telefono ?? ''),
+    dia_visita: (r.dia_visita || undefined) as Cliente['dia_visita'],
     vendedor_asignado: (r.vendedor_asignado ?? '') as Cliente['vendedor_asignado'],
     ruta: (r.ruta ?? '') as Cliente['ruta'],
     tipo_pago: (r.tipo_pago || 'Contado') as Cliente['tipo_pago'],
